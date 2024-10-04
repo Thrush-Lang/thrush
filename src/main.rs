@@ -24,6 +24,7 @@ pub static FILE_NAME_WITH_EXT: Mutex<String> = Mutex::new(String::new());
 pub static FILE_PATH: Mutex<String> = Mutex::new(String::new());
 
 fn main() {
+
     let mut parameters: Vec<String> = env::args().collect();
     let mut options: Options = Options::default();
     let mut compile: bool = false;
