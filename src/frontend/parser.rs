@@ -5,6 +5,7 @@ use {
             diagnostic::Diagnostic,
             error::{ThrushError, ThrushErrorKind},
             logging,
+            FILE_PATH
         },
         lexer::{DataTypes, Token, TokenKind},
     },
@@ -26,13 +27,14 @@ pub struct Parser<'instr, 'a> {
     locals: Vec<HashMap<&'instr str, DataTypes>>,
     scope: usize,
     scoper: ThrushScoper<'instr>,
+    diagnostics: Diagnostic
 }
 
 impl<'instr, 'a> Parser<'instr, 'a> {
     pub fn new() -> Self {
         Self {
             stmts: Vec::new(),
-            errors: Vec::with_capacity(10),
+            errors: Vec::with_capacity(50),
             tokens: None,
             options: None,
             current: 0,
@@ -42,6 +44,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             locals: vec![HashMap::new()],
             scope: 0,
             scoper: ThrushScoper::new(),
+            diagnostics: Diagnostic::new(FILE_PATH.lock().unwrap().to_string())
         }
     }
 
@@ -52,7 +55,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     self.stmts.push(instr);
                 }
                 Err(e) => {
-                    if self.errors.len() >= 10 {
+                    if self.errors.len() >= 50 {
                         break;
                     }
 
@@ -61,8 +64,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             }
         }
 
-        self.scoper.analyze()?;
-
         if !self.errors.is_empty() {
             for error in mem::take(&mut self.errors) {
                 if let ThrushError::Compile(msg) = error {
@@ -70,11 +71,13 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     continue;
                 }
 
-                Diagnostic::new(error).report();
+                self.diagnostics.report(error);
             }
 
             return Err(String::from("Compilation proccess ended with errors."));
         }
+
+        self.scoper.analyze()?;
 
         Ok(self.stmts.as_slice())
     }
@@ -87,12 +90,12 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             TokenKind::LBrace => Ok(self.block()?),
             TokenKind::Return => Ok(self.ret()?),
             TokenKind::Public => Ok(self.public()?),
-            TokenKind::Let => Ok(self.var()?),
+            TokenKind::Let => Ok(self.variable()?),
             _ => Ok(self.expr()?),
         }
     }
 
-    fn var(&mut self) -> Result<Instruction<'instr>, ThrushError> {
+    fn variable(&mut self) -> Result<Instruction<'instr>, ThrushError> {
         self.advance();
 
         let name: &'instr Token = self.consume(
@@ -117,7 +120,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
-                format!("let {}", name.lexeme.as_ref().unwrap()),
                 String::from("Syntax Error"),
                 String::from(
                     "Variable type is undefined. Did you forget to specify the variable type to undefined variable?",
@@ -163,7 +165,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                         return Err(ThrushError::Parse(
                             ThrushErrorKind::SyntaxError,
-                            format!("let {}", name.lexeme.as_ref().unwrap()),
                             String::from("Syntax Error"),
                             format!(
                                 "Variable type mismatch. Expected '{}' but found '{}' number.",
@@ -187,7 +188,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                         return Err(ThrushError::Parse(
                             ThrushErrorKind::SyntaxError,
-                            format!("let {}", name.lexeme.as_ref().unwrap()),
                             String::from("Syntax Error"),
                             format!(
                                 "Variable type mismatch. Expected '{}' but found '{}'.",
@@ -247,7 +247,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         if self.function == 0 {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
-                self.peek().lexeme.as_ref().unwrap().to_string(),
                 String::from("Syntax Error"),
                 String::from("Return statement outside of function. Invoke this keyword in scope of function definition."),
                 self.peek().span,
@@ -355,7 +354,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if self.peek().kind != TokenKind::LBrace {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected '{'."),
                     self.peek().span,
@@ -370,7 +368,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             } else {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected 'block' for the function body."),
                     self.peek().span,
@@ -396,7 +393,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if params.len() >= 8 {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::TooManyArguments,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Too many arguments for the function. The maximum number of arguments is 8."),
                     self.peek().span,
@@ -407,7 +403,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if !self.match_token(TokenKind::Identifier) {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected argument name."),
                     self.peek().span,
@@ -420,7 +415,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if !self.match_token(TokenKind::ColonColon) {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected '::'."),
                     self.peek().span,
@@ -437,7 +431,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 _ => {
                     return Err(ThrushError::Parse(
                         ThrushErrorKind::SyntaxError,
-                        self.peek().lexeme.as_ref().unwrap().to_string(),
                         String::from("Syntax Error"),
                         String::from("Expected argument type."),
                         self.peek().span,
@@ -473,7 +466,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 if self.ret.is_none() {
                     return Err(ThrushError::Parse(
                         ThrushErrorKind::SyntaxError,
-                        name.lexeme.as_ref().unwrap().to_string(),
                         String::from("Syntax Error"),
                         format!("Missing return statement with type '{}', you should add a return statement with type '{}'.", kind, kind),
                         name.span,
@@ -485,7 +477,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     true => {
                         return Err(ThrushError::Parse(
                             ThrushErrorKind::SyntaxError,
-                            name.lexeme.as_ref().unwrap().to_string(),
                             String::from("Syntax Error"),
                             format!(
                                 "Expected return type of '{}', found '{}'. You should write a return statement with type '{}'.",
@@ -546,7 +537,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if args.len() >= 24 {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::TooManyArguments,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected ')'. Too many arguments. Max is 24."),
                     self.peek().span,
@@ -560,7 +550,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         if args.is_empty() && self.match_token(TokenKind::SemiColon) {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
-                self.peek().lexeme.as_ref().unwrap().to_string(),
                 String::from("Syntax Error"),
                 String::from(
                     "Expected at least 1 argument for 'println' call. Like 'print(`Hi!`);'",
@@ -579,7 +568,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from(
                         "Expected at least 2 arguments for 'println' call. Like 'print(`%d`, 2);'",
@@ -602,7 +590,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 if str.contains("\n") {
                     return Err(ThrushError::Parse(
                         ThrushErrorKind::SyntaxError,
-                        self.peek().lexeme.as_ref().unwrap().to_string(),
                         String::from("Syntax Error"),
                         String::from(
                             "You can't print strings that contain newlines. Use 'println' instead.",
@@ -640,7 +627,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             if args.len() >= 24 {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::TooManyArguments,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from("Expected ')'. Too many arguments. Max is 24."),
                     self.peek().span,
@@ -662,7 +648,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         if args.is_empty() && self.match_token(TokenKind::SemiColon) {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
-                self.peek().lexeme.as_ref().unwrap().to_string(),
                 String::from("Syntax Error"),
                 String::from(
                     "Expected at least 1 argument for 'println' call. Like 'println(`Hi!`);'",
@@ -681,7 +666,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
-                    self.peek().lexeme.as_ref().unwrap().to_string(),
                     String::from("Syntax Error"),
                     String::from(
                         "Expected at least 2 arguments for 'println' call. Like 'println(`%d`, 2);'",
@@ -812,7 +796,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                     return Err(ThrushError::Parse(
                             ThrushErrorKind::SyntaxError,
-                            self.peek().lexeme.as_ref().unwrap().to_string(),
                             String::from("Syntax Error"),
                             format!("Expected expression, found '{}'. Is this a function call or an function definition?", kind),
                             self.peek().span,
@@ -827,7 +810,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                     return Err(ThrushError::Parse(
                         ThrushErrorKind::SyntaxError,
-                        self.peek().lexeme.as_ref().unwrap().to_string(),
                         String::from("Syntax Error"),
                         format!("Unexpected code '{}', check the code and review the syntax rules in the documentation.", kind),
                         self.peek().span,
@@ -855,7 +837,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         Err(ThrushError::Parse(
             error_kind,
-            self.peek().lexeme.as_ref().unwrap().to_string(),
             error_title,
             help,
             self.peek().span,
@@ -1023,6 +1004,10 @@ impl<'ctx> ThrushScoper<'ctx> {
     }
 
     pub fn analyze(&mut self) -> Result<(), String> {
+        if self.blocks.is_empty() {
+            return Ok(())
+        }
+
         for instr in self.blocks.last().unwrap().instructions.iter().rev() {
             match self.analyze_instruction(&instr.instr) {
                 Ok(()) => {}

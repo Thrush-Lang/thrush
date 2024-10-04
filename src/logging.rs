@@ -12,7 +12,6 @@ impl LogType {
             LogType::INFO => "INFO",
             LogType::WARN => "WARN",
             LogType::ERROR=> "ERROR",
-
         }
     }
 }

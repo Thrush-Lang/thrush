@@ -1,116 +1,68 @@
 use {
-    super::error::{ThrushError, ThrushErrorKind},
-    super::{FILE_NAME_WITH_EXT, FILE_PATH},
+    super::{error::{ThrushError, ThrushErrorKind}, FILE_NAME_WITH_EXT},
     colored::Colorize,
-    std::{fs::read_to_string, mem},
+    std::{fs::File, io::{BufRead, BufReader} }
 };
 
 pub struct Diagnostic {
-    error: ThrushError,
     buffer: String,
     drawer: String,
-    span: (usize, usize),
-    line: usize,
-    msg: String,
+    lines: Vec<String>
 }
 
 impl Diagnostic {
-    pub fn new(error: ThrushError) -> Self {
-        let span: (usize, usize) = match error {
-            ThrushError::Parse(_, _, _, _, span, _) => span,
-            ThrushError::Lex(_, _, _, _, span, _) => span,
-            _ => (0, 0),
-        };
+    pub fn new(path: String) -> Self {
 
-        let line: usize = match error {
-            ThrushError::Parse(_, _, _, _, _, line) => line,
-            ThrushError::Lex(_, _, _, _, _, line) => line,
-            _ => 0,
-        };
-
-        let msg: String = match error {
-            ThrushError::Parse(_, _, ref msg, _, _, _) => msg.clone(),
-            ThrushError::Lex(_, _, ref msg, _, _, _) => msg.clone(),
-            _ => String::new(),
-        };
+        let file: File = File::open(path).unwrap();
+        let lines: Vec<String> = BufReader::new(file).lines().map(|line| {
+            line.unwrap().to_string()
+        }).collect();
 
         Self {
-            error,
             buffer: String::new(),
             drawer: String::new(),
-            span,
-            line,
-            msg,
+            lines
         }
     }
 
-    pub fn report(&mut self) {
-        let content: String = read_to_string(FILE_PATH.lock().unwrap().as_str()).unwrap();
-
-        match mem::take(&mut self.error) {
-            ThrushError::Parse(kind, lexeme, _, help, _, _) => match kind {
-                ThrushErrorKind::ParsedNumber => {
-                    self.print_report(content, lexeme, help);
-                }
-                ThrushErrorKind::UnreachableNumber => {
-                    self.print_report(content, lexeme, help);
-                }
-                ThrushErrorKind::SyntaxError => {
-                    self.print_report(content, lexeme, help);
-                }
-
-                ThrushErrorKind::UnreachableVariable => {
-                    self.print_report(content, lexeme, help);
-                }
-
-                ThrushErrorKind::VariableNotDefined => {
-                    self.print_report(content, lexeme, help);
-                }
-                _ => {}
+    pub fn report(&mut self, error: ThrushError) {
+        match error {
+            ThrushError::Parse(ThrushErrorKind::ParsedNumber | ThrushErrorKind::UnreachableNumber | ThrushErrorKind::SyntaxError | ThrushErrorKind::UnreachableVariable | ThrushErrorKind::VariableNotDefined, title, help, span, line) => {
+                self.print_report( title, help, span, line);
             },
 
-            ThrushError::Lex(kind, lexeme, _, help, _, _) => match kind {
-                ThrushErrorKind::SyntaxError => {
-                    self.print_report(content, lexeme, help);
-                }
-
-                ThrushErrorKind::ParsedNumber => {
-                    self.print_report(content, lexeme, help);
-                }
-
-                ThrushErrorKind::UnreachableNumber => {
-                    self.print_report(content, lexeme, help);
-                }
-                _ => {}
+            ThrushError::Lex(ThrushErrorKind::SyntaxError | ThrushErrorKind::ParsedNumber | ThrushErrorKind::UnreachableNumber | ThrushErrorKind::UnknownChar,  title, help, span, line) => {
+                self.print_report(title, help, span, line);
             },
 
             _ => {}
         }
     }
 
-    fn print_report(&mut self, content: String, lexeme: String, help: String) {
-        let line: &str = content
-            .lines()
-            .find(|line| line.contains(&lexeme))
-            .expect("line not found in file.")
-            .trim();
+    fn print_report(&mut self, title: String, help: String, span: (usize, usize), line: usize) {
+        self.print_header(span, line, title);
 
-        self.print_header();
+        let line: &str = if line == self.lines.len() - 1 {
+            self.lines.last().unwrap().trim()
+        } else {
+            self.lines[line - 1].trim()
+        };
 
-        self.add_space_to_line();
-        self.draw_line(line);
-        self.draw_main_focus(line.len());
+        self.buffer.push_str("  ");
+        self.buffer.push_str(&format!("{}\n", line));
 
-        self.push_drawer();
-        self.print_line();
-        self.reset_buffer();
-        self.reset_drawer();
 
-        self.add_space_to_line();
-        self.draw_line(lexeme.as_str());
-        self.draw_main_focus(lexeme.len());
-        self.push_drawer();
-        self.print_line();
+        for _ in 0..line.len() + 4 {
+            self.drawer
+                .push_str("^".bold().bright_red().to_string().as_str());
+        }
+
+        self.buffer.push_str(&self.drawer);
+
+        println!("{}", self.buffer);
+
+        self.drawer.clear();
+        self.buffer.clear();
 
         println!(
             "\n{}{} {}\n",
@@ -120,56 +72,20 @@ impl Diagnostic {
         );
     }
 
-    fn print_header(&mut self) {
+    fn print_header(&mut self, span: (usize, usize), line: usize, title: String) {
         println!(
             "\n{} {}{}{}\n",
             FILE_NAME_WITH_EXT.lock().unwrap().bold().bright_red(),
-            self.line,
+            line,
             ":".bold(),
-            format!("{}..{}", self.span.0, self.span.1).bold()
+            format!("{}..{}", span.0, span.1).bold()
         );
 
         println!(
             "{} {}\n",
             "ERROR:".bold().bright_red().underline(),
-            self.msg.bold()
+            title.bold()
         );
     }
 
-    fn draw_line(&mut self, line: &str) {
-        self.buffer.push_str(line);
-        self.buffer.push('\n');
-    }
-
-    fn draw_main_focus(&mut self, limit: usize) {
-        for _ in 0..limit + 4 {
-            self.drawer
-                .push_str("^".bold().bright_red().to_string().as_str());
-        }
-    }
-
-    #[inline]
-    fn push_drawer(&mut self) {
-        self.buffer.push_str(&self.drawer);
-    }
-
-    #[inline]
-    fn reset_drawer(&mut self) {
-        self.drawer.clear();
-    }
-
-    #[inline]
-    fn reset_buffer(&mut self) {
-        self.buffer.clear();
-    }
-
-    #[inline]
-    fn add_space_to_line(&mut self) {
-        self.buffer.push_str("  ");
-    }
-
-    #[inline]
-    fn print_line(&mut self) {
-        println!("{}", self.buffer);
-    }
 }

@@ -2,6 +2,7 @@ use {
     super::super::{
         diagnostic::Diagnostic,
         error::{ThrushError, ThrushErrorKind},
+        FILE_PATH
     },
     core::str,
     std::{mem, num::ParseFloatError},
@@ -10,14 +11,15 @@ use {
 pub type TokenSpan = (usize, usize);
 
 pub struct Lexer<'a> {
-    pub tokens: Vec<Token>,
-    pub code: &'a [u8],
-    pub token_start: usize,
-    pub token_end: usize,
-    pub start: usize,
-    pub current: usize,
-    pub line: usize,
-    pub errors: Vec<ThrushError>,
+    tokens: Vec<Token>,
+    code: &'a [u8],
+    token_start: usize,
+    token_end: usize,
+    start: usize,
+    current: usize,
+    line: usize,
+    errors: Vec<ThrushError>,
+    diagnostics: Diagnostic
 }
 
 impl<'a> Lexer<'a> {
@@ -30,13 +32,14 @@ impl<'a> Lexer<'a> {
             start: 0,
             current: 0,
             line: 1,
-            errors: Vec::with_capacity(10),
+            errors: Vec::with_capacity(50),
+            diagnostics: Diagnostic::new(FILE_PATH.lock().unwrap().to_string())
         }
     }
 
     pub fn lex(&mut self) -> Result<&[Token], String> {
         while !self.end() {
-            if self.errors.len() >= 10 {
+            if self.errors.len() >= 50 {
                 break;
             }
 
@@ -50,7 +53,7 @@ impl<'a> Lexer<'a> {
 
         if !self.errors.is_empty() {
             for error in mem::take(&mut self.errors) {
-                Diagnostic::new(error).report();
+                self.diagnostics.report(error);
             }
 
             return Err(String::from("Compilation proccess ended with errors."));
@@ -86,7 +89,7 @@ impl<'a> Lexer<'a> {
                 } else if self.end() {
                     return Err(ThrushError::Lex(
                         ThrushErrorKind::SyntaxError,
-                        self.lexeme(),
+        
                         String::from("Syntax Error"),
                         String::from(
                             "Unterminated multiline comment. Did you forget to close the string with a '*/'?",
@@ -124,7 +127,6 @@ impl<'a> Lexer<'a> {
             _ => {
                 return Err(ThrushError::Lex(
                     ThrushErrorKind::UnknownChar,
-                    self.lexeme(),
                     String::from("Unknown character."),
                     String::from("Did you provide a valid character?"),
                     (self.token_start, self.token_end),
@@ -222,7 +224,7 @@ impl<'a> Lexer<'a> {
         if num.is_err() {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::ParsedNumber,
-                self.lexeme(),
+
                 String::from("The number is too big for an integer."),
                 String::from(
                     "Did you provide a valid number with the correct format and not out of bounds?",
@@ -252,7 +254,6 @@ impl<'a> Lexer<'a> {
         if self.peek() != b'"' {
             return Err(ThrushError::Lex(
                 ThrushErrorKind::SyntaxError,
-                self.lexeme(),
                 String::from("Syntax Error"),
                 String::from(
                     "Unterminated string. Did you forget to close the string with a '\"'?",
@@ -299,7 +300,7 @@ impl<'a> Lexer<'a> {
                     -9223372036854775808isize..=9223372036854775807isize => Ok(DataTypes::I64),
                     _ => Err(ThrushError::Parse(
                         ThrushErrorKind::UnreachableNumber,
-                        lexeme,
+
                         String::from("The number is out of bounds."),
                         String::from("The size is out of bounds of an isize (-n to n)."),
                         span,
@@ -308,7 +309,7 @@ impl<'a> Lexer<'a> {
                 },
                 Err(_) => Err(ThrushError::Parse(
                     ThrushErrorKind::ParsedNumber,
-                    lexeme,
+
                     String::from("The number is too long for an signed integer."),
                     String::from("Did you provide a valid number with the correct format and not out of bounds?"),
                     span,
@@ -320,7 +321,7 @@ impl<'a> Lexer<'a> {
                 Ok(_) => Ok(DataTypes::F64),
                 Err(_) => Err(ThrushError::Parse(
                     ThrushErrorKind::ParsedNumber,
-                    lexeme,
+      
                     String::from("The number is too big for an float."),
                     String::from("Did you provide a valid number with the correct format and not out of bounds?"),
                     span,
@@ -337,7 +338,7 @@ impl<'a> Lexer<'a> {
                 0usize..=18_446_744_073_709_551_615usize => Ok(DataTypes::U64),
                 _ => Err(ThrushError::Parse(
                     ThrushErrorKind::UnreachableNumber,
-                    lexeme,
+        
                     String::from("The number is out of bounds."),
                     String::from("The size is out of bounds of an usize (0 to n)."),
                     span,
@@ -346,7 +347,7 @@ impl<'a> Lexer<'a> {
             },
             Err(_) => Err(ThrushError::Parse(
                 ThrushErrorKind::ParsedNumber,
-                lexeme,
+  
                 String::from("The number is too long for an unsigned integer."),
                 String::from(
                     "Did you provide a valid number with the correct format and not out of bounds?",
