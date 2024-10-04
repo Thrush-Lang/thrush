@@ -25,11 +25,10 @@ pub static FILE_PATH: Mutex<String> = Mutex::new(String::new());
 
 fn main() {
     let mut parameters: Vec<String> = env::args().collect();
-
-    parameters.remove(0);
-
     let mut options: Options = Options::default();
     let mut compile: bool = false;
+
+    parameters.remove(0);
 
     for parameter in parameters.iter() {
         match parameter.as_str() {

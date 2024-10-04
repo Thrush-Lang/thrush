@@ -6,11 +6,11 @@ edition = "2021"
 
 [dependencies]
 ahash = "*"
-chrono = "0.4.38"
-colored = "2.1.0"
-llvmenv = "0.3.2"
-llvm-sys = "170.1.1"
-inkwell = { version = "0.5.0", features = ["llvm17-0"] }
+chrono = "*"
+colored = "*"
+llvmenv = "*"
+llvm-sys = {version = "180.0.0", features = ["force-static"]}
+inkwell = { version = "0.5.0", features = ["llvm18-0", "llvm18-0-force-static"] }
 
 [profile.release]
 opt-level = 3
