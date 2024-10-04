@@ -11,7 +11,7 @@ impl LogType {
         match self {
             LogType::INFO => "INFO",
             LogType::WARN => "WARN",
-            LogType::ERROR=> "ERROR",
+            LogType::ERROR => "ERROR",
         }
     }
 }
@@ -19,7 +19,6 @@ impl LogType {
 /// Logs a message to the compiler standard output (CSO)
 #[inline]
 pub fn log(ltype: LogType, msg: &str) {
-
     println!(
         "- {} - {}{}{} {}",
         Local::now().format("%H:%M:%S").to_string().bold(),
@@ -28,6 +27,4 @@ pub fn log(ltype: LogType, msg: &str) {
         "]".bold(),
         msg.bold()
     );
-
 }
-

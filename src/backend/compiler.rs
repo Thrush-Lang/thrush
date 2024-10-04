@@ -723,7 +723,10 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
                 remove_file(format!("{}.bc", self.options.name)).unwrap();
             }
             Err(_) => {
-                logging::log(logging::LogType::ERROR, "Compilation failed. Clang version 17 is not installed.");
+                logging::log(
+                    logging::LogType::ERROR,
+                    "Compilation failed. Clang version 17 is not installed.",
+                );
             }
         }
     }
