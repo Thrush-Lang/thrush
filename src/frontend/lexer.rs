@@ -189,6 +189,9 @@ impl<'a> Lexer<'a> {
 
             "void" => self.make(TokenKind::DataType(DataTypes::Void)),
 
+            "float" => self.make(TokenKind::DataType(DataTypes::Float)),
+            "integer" => self.make(TokenKind::DataType(DataTypes::Integer)),
+
             _ => {
                 self.tokens.push(Token {
                     kind: TokenKind::Identifier,
@@ -571,10 +574,12 @@ pub enum DataTypes {
     I16,
     I32,
     I64,
+    Integer,
 
     // Floating Point DataTypes
     F32,
     F64,
+    Float,
 
     // Boolean DataTypes
     Bool,
@@ -602,6 +607,8 @@ impl std::fmt::Display for DataTypes {
             DataTypes::Bool => write!(f, "bool"),
             DataTypes::String => write!(f, "string"),
             DataTypes::Void => write!(f, "void"),
+            DataTypes::Float => write!(f, "float"),
+            DataTypes::Integer => write!(f, "integer")
         }
     }
 }
@@ -622,6 +629,8 @@ impl DataTypes {
             DataTypes::Bool => DataTypes::Bool,
             DataTypes::String => DataTypes::String,
             DataTypes::Void => DataTypes::Void,
+            DataTypes::Integer => DataTypes::Integer,
+            DataTypes::Float => DataTypes::Float
         }
     }
 }

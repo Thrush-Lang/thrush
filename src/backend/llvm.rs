@@ -154,6 +154,8 @@ pub fn datatype_to_fn_type<'ctx>(
             DataTypes::Bool => context.bool_type().fn_type(&param_types, true),
             DataTypes::F32 => context.f32_type().fn_type(&param_types, true),
             DataTypes::F64 => context.f64_type().fn_type(&param_types, true),
+
+            _ => unimplemented!()
         },
 
         None => context.void_type().fn_type(&param_types, true),

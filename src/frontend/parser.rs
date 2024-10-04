@@ -13,6 +13,9 @@ use {
     std::mem,
 };
 
+const VALID_INTEGER_TYPES: [DataTypes; 8] = [DataTypes::U8, DataTypes::U16, DataTypes::U32, DataTypes::U64, DataTypes::I8, DataTypes::I16, DataTypes::I32, DataTypes::I64];
+const VALID_FLOAT_TYPES: [DataTypes; 2] = [DataTypes::F32, DataTypes::F64];
+
 const C_FMTS: [&str; 2] = ["%s", "%d"];
 
 pub struct Parser<'instr, 'a> {
@@ -105,11 +108,23 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             String::from("Expected let <name>."),
         )?;
 
-        let kind: Option<DataTypes> = match &self.peek().kind {
+        let mut kind: Option<DataTypes> = match &self.peek().kind {
             TokenKind::DataType(kind) => {
                 self.advance();
 
                 Some(kind.dereference())
+            }
+
+            TokenKind::Identifier => {
+                return Err(ThrushError::Parse(
+                    ThrushErrorKind::SyntaxError,
+                    String::from("Syntax Error"),
+                    String::from(
+                        "Variable type is an identifier. You should change to an valid type.",
+                    ),
+                    name.span,
+                    name.line,
+                ));
             }
 
             _ => None,
@@ -155,6 +170,50 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         if kind.is_some() {
             match &value {
                 Instruction::Integer(data_type, _) => {
+
+                    match kind.as_ref().unwrap(){
+                        DataTypes::Integer => {
+                            if !VALID_INTEGER_TYPES.contains(data_type) {
+
+                                return Err(ThrushError::Parse(
+                                    ThrushErrorKind::SyntaxError,
+                                    String::from("Syntax Error"),
+                                    format!(
+                                        "Variable type mismatch. Expected '{}' but found '{}'.",
+                                        kind.unwrap(),
+                                        data_type
+                                    ),
+                                    name.span,
+                                    name.line,
+                                ));
+
+                            }
+
+                            kind = Some(data_type.dereference());
+
+                        }
+                        DataTypes::Float => {
+                            if !VALID_FLOAT_TYPES.contains(data_type) {
+
+                                return Err(ThrushError::Parse(
+                                    ThrushErrorKind::SyntaxError,
+                                    String::from("Syntax Error"),
+                                    format!(
+                                        "Variable type mismatch. Expected '{}' but found '{}'.",
+                                        kind.unwrap(),
+                                        data_type
+                                    ),
+                                    name.span,
+                                    name.line,
+                                ));
+
+                            }
+
+                            kind = Some(data_type.dereference());
+                        }
+                        _ => {}
+                    }
+
                     if data_type != kind.as_ref().unwrap() {
                         self.consume(
                             TokenKind::SemiColon,
@@ -167,7 +226,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                             ThrushErrorKind::SyntaxError,
                             String::from("Syntax Error"),
                             format!(
-                                "Variable type mismatch. Expected '{}' but found '{}' number.",
+                                "Variable type mismatch. Expected '{}' but found '{}'",
                                 kind.unwrap(),
                                 data_type
                             ),
