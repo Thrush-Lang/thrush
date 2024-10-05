@@ -5,6 +5,7 @@ pub enum ThrushError {
     Compile(String),
     Parse(ThrushErrorKind, String, String, TokenSpan, usize),
     Lex(ThrushErrorKind, String, String, TokenSpan, usize),
+    Scope(ThrushErrorKind, String, String, TokenSpan, usize),
     #[default]
     None,
 }

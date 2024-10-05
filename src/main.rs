@@ -5,7 +5,7 @@ mod frontend;
 mod logging;
 
 use {
-    backend::compiler::{Compiler, FileBuilder, Instruction, Linking, Optimization, Options},
+    backend::compiler::{Compiler, FileBuilder, Instruction, Linking, Options, OPT},
     colored::{Colorize, CustomColor},
     frontend::{
         lexer::{Lexer, Token},
@@ -15,7 +15,10 @@ use {
         builder::Builder,
         context::Context,
         module::Module,
-        targets::{InitializationConfig, Target, TargetMachine, TargetTriple},
+        targets::{
+            CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
+        },
+        OptimizationLevel,
     },
     std::{env, fs::read_to_string, path::Path, sync::Mutex},
 };
@@ -24,7 +27,6 @@ pub static FILE_NAME_WITH_EXT: Mutex<String> = Mutex::new(String::new());
 pub static FILE_PATH: Mutex<String> = Mutex::new(String::new());
 
 fn main() {
-
     let mut parameters: Vec<String> = env::args().collect();
     let mut options: Options = Options::default();
     let mut compile: bool = false;
@@ -65,37 +67,46 @@ fn main() {
                 let path: &Path = Path::new(&parameters[index]);
 
                 if !path.exists() {
-                    logging::log(logging::LogType::ERROR, &format!(
-                        "The path or file '{}' cannot be accessed.",
-                        &parameters[index]
-                    ));
+                    logging::log(
+                        logging::LogType::ERROR,
+                        &format!(
+                            "The path or file '{}' cannot be accessed.",
+                            &parameters[index]
+                        ),
+                    );
 
                     return;
                 }
 
                 if !path.is_file() {
-                    logging::log(logging::LogType::ERROR, &format!(
-                        "The path '{}' ended with not a file.",
-                        &parameters[index]
-                    ));
+                    logging::log(
+                        logging::LogType::ERROR,
+                        &format!("The path '{}' ended with not a file.", &parameters[index]),
+                    );
 
                     return;
                 }
 
                 if path.extension().is_none() {
-                    logging::log(logging::LogType::ERROR, &format!(
-                        "The file in path '{}' does not have an extension.",
-                        &parameters[index]
-                    ));
+                    logging::log(
+                        logging::LogType::ERROR,
+                        &format!(
+                            "The file in path '{}' does not have an extension.",
+                            &parameters[index]
+                        ),
+                    );
 
                     return;
                 }
 
                 if path.extension().unwrap() != "th" {
-                    logging::log(logging::LogType::ERROR, &format!(
-                        "The file in path '{}' does not have the extension '.th'.",
-                        &parameters[index]
-                    ));
+                    logging::log(
+                        logging::LogType::ERROR,
+                        &format!(
+                            "The file in path '{}' does not have the extension '.th'.",
+                            &parameters[index]
+                        ),
+                    );
 
                     return;
                 }
@@ -121,19 +132,19 @@ fn main() {
                         }
                         "--optimization" | "-opt" => match parameters[i + 1].as_str() {
                             "none" => {
-                                options.optimization = Optimization::None;
+                                options.optimization = OPT::None;
                             }
                             "low" => {
-                                options.optimization = Optimization::Low;
+                                options.optimization = OPT::Low;
                             }
                             "mid" => {
-                                options.optimization = Optimization::Mid;
+                                options.optimization = OPT::Mid;
                             }
                             "mcqueen" => {
-                                options.optimization = Optimization::Mcqueen;
+                                options.optimization = OPT::Mcqueen;
                             }
                             _ => {
-                                options.optimization = Optimization::None;
+                                options.optimization = OPT::None;
                             }
                         },
                         "--emit-llvm" | "-emit-llvm" => {
@@ -228,6 +239,27 @@ fn main() {
                 Ok(instructions) => {
                     module.set_triple(&options.target_triple);
                     module.strip_debug_info();
+
+                    let opt: OptimizationLevel = match &options.optimization {
+                        OPT::None => OptimizationLevel::None,
+                        OPT::Low => OptimizationLevel::Default,
+                        OPT::Mid => OptimizationLevel::Less,
+                        OPT::Mcqueen => OptimizationLevel::Aggressive,
+                    };
+
+                    let machine: TargetMachine = Target::from_triple(&options.target_triple)
+                        .unwrap()
+                        .create_target_machine(
+                            &options.target_triple,
+                            "",
+                            "",
+                            opt,
+                            RelocMode::Default,
+                            CodeModel::Default,
+                        )
+                        .unwrap();
+
+                    module.set_data_layout(&machine.get_target_data().get_data_layout());
 
                     Compiler::compile(&module, &builder, &context, instructions);
 

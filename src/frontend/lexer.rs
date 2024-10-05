@@ -5,7 +5,7 @@ use {
         FILE_PATH
     },
     core::str,
-    std::{mem, num::ParseFloatError},
+    std::num::ParseFloatError,
 };
 
 pub type TokenSpan = (usize, usize);
@@ -52,10 +52,10 @@ impl<'a> Lexer<'a> {
         }
 
         if !self.errors.is_empty() {
-            for error in mem::take(&mut self.errors) {
+            self.errors.iter().for_each(|error| {
                 self.diagnostics.report(error);
-            }
-
+            });
+       
             return Err(String::from("Compilation proccess ended with errors."));
         };
 
@@ -614,7 +614,7 @@ impl std::fmt::Display for DataTypes {
 }
 
 impl DataTypes {
-    pub fn dereference(&self) -> DataTypes {
+    pub fn defer(&self) -> DataTypes {
         match &self {
             DataTypes::U8 => DataTypes::U8,
             DataTypes::U16 => DataTypes::U16,

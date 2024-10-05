@@ -19,7 +19,7 @@ use {
             BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, GlobalValue,
             InstructionValue, IntValue, PointerValue,
         },
-        AddressSpace,
+        AddressSpace, GlobalVisibility,
     },
     std::{
         collections::HashMap,
@@ -101,7 +101,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 Some(value) => {
                     self.emit_variable(name, kind, value);
                 }
-                None => (),
+                None => self.emit_variable(name, kind, &Instruction::Null),
             },
 
             Instruction::EntryPoint { body } => {
@@ -171,6 +171,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
             Instruction::RefVar { name, scope, .. } => match scope {
                 Scope::Global => {
+                    // HASTA QUE SE IMPLEMENTE CONSTANT O STATIC
                     todo!()
                 }
 
@@ -310,7 +311,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 };
 
                 match value {
-                    Instruction::Null => {}
+                    Instruction::Null => {
+                        let store: InstructionValue<'_> = self
+                            .builder
+                            .build_store(ptr, build_const_integer(self.context, kind, 0.0))
+                            .unwrap();
+
+                        store.set_alignment(4).unwrap();
+                    }
 
                     Instruction::Integer(kind, num) => match kind {
                         DataTypes::I8
@@ -336,7 +344,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 }
 
                 let load: BasicValueEnum<'ctx> =
-                    self.builder.build_load(ptr_kind, ptr, name).unwrap();
+                    self.builder.build_load(ptr_kind, ptr, "").unwrap();
 
                 load.as_instruction_value()
                     .unwrap()
@@ -346,7 +354,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 self.locals.insert(
                     name.to_string(),
                     Instruction::Value(ThrushBasicValueEnum {
-                        kind: kind.dereference(),
+                        kind: kind.defer(),
                         value: load,
                     }),
                 );
@@ -370,7 +378,14 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 };
 
                 match value {
-                    Instruction::Null => {}
+                    Instruction::Null => {
+                        let store: InstructionValue<'_> = self
+                            .builder
+                            .build_store(ptr, build_const_float(self.context, kind, 0.0))
+                            .unwrap();
+
+                        store.set_alignment(4).unwrap();
+                    }
 
                     Instruction::Integer(kind, num) => match kind {
                         DataTypes::F32 | DataTypes::F64 => {
@@ -389,7 +404,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 }
 
                 let load: BasicValueEnum<'ctx> =
-                    self.builder.build_load(ptr_kind, ptr, name).unwrap();
+                    self.builder.build_load(ptr_kind, ptr, "").unwrap();
 
                 load.as_instruction_value()
                     .unwrap()
@@ -399,13 +414,25 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 self.locals.insert(
                     name.to_string(),
                     Instruction::Value(ThrushBasicValueEnum {
-                        kind: kind.dereference(),
+                        kind: kind.defer(),
                         value: load,
                     }),
                 );
             }
 
             DataTypes::String => match value {
+                Instruction::Null => {
+                    let string: PointerValue<'_> = self.emit_global_string("\0", name);
+
+                    self.locals.insert(
+                        name.to_string(),
+                        Instruction::Value(ThrushBasicValueEnum {
+                            kind: DataTypes::String,
+                            value: string.into(),
+                        }),
+                    );
+                }
+
                 Instruction::String(string) => {
                     let string: PointerValue<'_> = self.emit_global_string(string, name);
 
@@ -490,7 +517,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 .add_global(kind, Some(AddressSpace::default()), "");
         global.set_linkage(Linkage::Private);
         global.set_initializer(&self.context.const_string(string.as_ref(), false));
+        global.set_visibility(GlobalVisibility::Protected);
         global.set_constant(true);
+        global.set_unnamed_addr(true);
 
         self.builder
             .build_pointer_cast(
@@ -589,6 +618,7 @@ pub enum Instruction<'ctx> {
         name: &'ctx str,
         scope: Scope,
         line: usize,
+        span: (usize, usize),
     },
     MutVar {
         name: &'ctx str,
@@ -600,7 +630,7 @@ pub enum Instruction<'ctx> {
 }
 
 #[derive(Default, Debug)]
-pub enum Optimization {
+pub enum OPT {
     #[default]
     None,
     Low,
@@ -619,7 +649,7 @@ pub enum Linking {
 pub struct Options {
     pub name: String,
     pub target_triple: TargetTriple,
-    pub optimization: Optimization,
+    pub optimization: OPT,
     pub interpret: bool,
     pub emit_llvm: bool,
     pub build: bool,
@@ -633,7 +663,7 @@ impl Default for Options {
         Self {
             name: String::from("main"),
             target_triple: TargetMachine::get_default_triple(),
-            optimization: Optimization::default(),
+            optimization: OPT::default(),
             interpret: false,
             emit_llvm: false,
             build: false,
@@ -656,10 +686,10 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
 
     pub fn build(self) {
         let opt_level: &str = match self.options.optimization {
-            Optimization::None => "O0",
-            Optimization::Low => "O1",
-            Optimization::Mid => "O2",
-            Optimization::Mcqueen => "O3",
+            OPT::None => "O0",
+            OPT::Low => "O1",
+            OPT::Mid => "O2",
+            OPT::Mcqueen => "O3",
         };
 
         let linking: &str = match self.options.linking {
@@ -677,14 +707,14 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
         self.module
             .write_bitcode_to_path(Path::new(&format!("{}.bc", self.options.name)));
 
-        match Command::new("clang-17").spawn() {
+        match Command::new("clang-18").spawn() {
             Ok(mut child) => {
                 child.kill().unwrap();
 
                 if self.options.build {
                     match self.opt(opt_level) {
                         Ok(()) => {
-                            Command::new("clang-17")
+                            Command::new("clang-18")
                                 .arg("-opaque-pointers")
                                 .arg(linking)
                                 .arg("-ffast-math")
@@ -702,7 +732,7 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
                 } else {
                     match self.opt(opt_level) {
                         Ok(()) => {
-                            Command::new("clang-17")
+                            Command::new("clang-18")
                                 .arg("-opaque-pointers")
                                 .arg(linking)
                                 .arg("-ffast-math")
@@ -732,11 +762,11 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
     }
 
     fn opt(&self, opt_level: &str) -> Result<(), String> {
-        match Command::new("opt-17").spawn() {
+        match Command::new("opt").spawn() {
             Ok(mut child) => {
                 child.kill().unwrap();
 
-                Command::new("opt-17")
+                Command::new("opt")
                     .arg(format!("-p={}", opt_level))
                     .arg("-p=globalopt")
                     .arg("-p=globaldce")
@@ -754,7 +784,7 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
             }
 
             Err(_) => Err(String::from(
-                "Compilation failed. LLVM Optimizer version 17 is not installed.",
+                "Compilation failed. LLVM Optimizer is not installed.",
             )),
         }
     }

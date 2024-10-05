@@ -4,12 +4,11 @@ use {
             backend::compiler::{Instruction, Options, Scope},
             diagnostic::Diagnostic,
             error::{ThrushError, ThrushErrorKind},
-            logging, FILE_PATH,
+            FILE_PATH,
         },
         lexer::{DataTypes, Token, TokenKind},
     },
     ahash::AHashMap as HashMap,
-    std::mem,
 };
 
 const VALID_INTEGER_TYPES: [DataTypes; 8] = [
@@ -76,14 +75,9 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         }
 
         if !self.errors.is_empty() {
-            for error in mem::take(&mut self.errors) {
-                if let ThrushError::Compile(msg) = error {
-                    logging::log(logging::LogType::ERROR, &msg);
-                    continue;
-                }
-
+            self.errors.iter().for_each(|error| {
                 self.diagnostics.report(error);
-            }
+            });
 
             return Err(String::from("Compilation proccess ended with errors."));
         }
@@ -120,7 +114,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             TokenKind::DataType(kind) => {
                 self.advance();
 
-                Some(kind.dereference())
+                Some(kind.defer())
             }
 
             TokenKind::Eq => None,
@@ -149,6 +143,12 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 name.line,
             ));
         } else if self.peek().kind == TokenKind::SemiColon {
+            match kind.as_ref().unwrap() {
+                DataTypes::Integer => kind = Some(DataTypes::I32),
+                DataTypes::Float => kind = Some(DataTypes::F32),
+                _ => {}
+            }
+
             self.consume(
                 TokenKind::SemiColon,
                 ThrushErrorKind::SyntaxError,
@@ -192,7 +192,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                 ));
                             }
 
-                            kind = Some(data_type.dereference());
+                            kind = Some(data_type.defer());
                         }
                         DataTypes::Float => {
                             if !VALID_FLOAT_TYPES.contains(data_type) {
@@ -209,7 +209,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                 ));
                             }
 
-                            kind = Some(data_type.dereference());
+                            kind = Some(data_type.defer());
                         }
                         _ => {}
                     }
@@ -361,7 +361,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn block(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        let line: usize = self.advance().line;
+        self.advance();
 
         self.begin_scope();
 
@@ -485,7 +485,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 TokenKind::DataType(kind) => {
                     self.advance();
 
-                    kind.dereference()
+                    kind.defer()
                 }
                 _ => {
                     return Err(ThrushError::Parse(
@@ -513,7 +513,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         let return_kind: Option<DataTypes> = match &self.peek().kind {
             TokenKind::DataType(kind) => {
                 self.advance();
-                Some(kind.dereference())
+                Some(kind.defer())
             }
             _ => None,
         };
@@ -559,7 +559,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         match &return_kind {
             Some(kind) => {
-                self.define_global(name.lexeme.as_ref().unwrap(), kind.dereference());
+                self.define_global(name.lexeme.as_ref().unwrap(), kind.defer());
             }
 
             None => {
@@ -835,6 +835,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                         name: self.previous().lexeme.as_ref().unwrap(),
                         scope,
                         line: self.previous().line,
+                        span: self.previous().span,
                     }
                 }
 
@@ -1016,7 +1017,7 @@ impl<'instr> Instruction<'instr> {
 
     pub fn get_kind(&self) -> Option<DataTypes> {
         match self {
-            Instruction::Var { kind, .. } => Some(kind.dereference()),
+            Instruction::Var { kind, .. } => Some(kind.defer()),
             _ => None,
         }
     }
@@ -1027,6 +1028,7 @@ pub struct ThrushScoper<'ctx> {
     blocks: Vec<ThrushBlock<'ctx>>,
     count: usize,
     errors: Vec<ThrushError>,
+    diagnostic: Diagnostic,
 }
 
 #[derive(Debug)]
@@ -1045,6 +1047,7 @@ impl<'ctx> ThrushScoper<'ctx> {
             blocks: Vec::new(),
             count: 0,
             errors: Vec::with_capacity(10),
+            diagnostic: Diagnostic::new(FILE_PATH.lock().unwrap().to_string()),
         }
     }
 
@@ -1084,9 +1087,7 @@ impl<'ctx> ThrushScoper<'ctx> {
 
         if !self.errors.is_empty() {
             self.errors.iter().for_each(|error| {
-                if let ThrushError::Compile(msg) = error {
-                    logging::log(logging::LogType::ERROR, msg);
-                }
+                self.diagnostic.report(error);
             });
 
             return Err(String::from("Compilation proccess ended with errors."));
@@ -1127,21 +1128,32 @@ impl<'ctx> ThrushScoper<'ctx> {
         }
 
         match instr {
-            Instruction::RefVar { name, line, .. } => {
+            Instruction::RefVar {
+                name, line, span, ..
+            } => {
                 if !self.is_at_current_scope(name, None, index) {
-                    return Err(ThrushError::Compile(format!(
-                        "Variable: `{}` is not defined.",
-                        name
-                    )));
+                    return Err(ThrushError::Scope(
+                        ThrushErrorKind::VariableNotDefined,
+                        String::from("Undefined Variable"),
+                        format!("The variable `{}` not found in this scope.", name),
+                        *span,
+                        *line,
+                    ));
                 }
 
                 if self.is_at_current_scope(name, None, index)
                     && !self.is_reacheable_at_current_scope(name, *line, None, index)
                 {
-                    return Err(ThrushError::Compile(format!(
-                        "Variable: `{}` is unreacheable in this scope.",
-                        name
-                    )));
+                    return Err(ThrushError::Scope(
+                        ThrushErrorKind::UnreachableVariable,
+                        String::from("Unreacheable Variable"),
+                        format!(
+                            "The variable `{}` is unreacheable to the current scope.",
+                            name
+                        ),
+                        *span,
+                        *line,
+                    ));
                 }
 
                 Ok(())
