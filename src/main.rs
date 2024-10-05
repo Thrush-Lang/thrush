@@ -69,10 +69,7 @@ fn main() {
                 if !path.exists() {
                     logging::log(
                         logging::LogType::ERROR,
-                        &format!(
-                            "The path or file '{}' cannot be accessed.",
-                            &parameters[index]
-                        ),
+                        &format!("The path '{}' cannot be accessed.", &parameters[index]),
                     );
 
                     return;
@@ -113,8 +110,11 @@ fn main() {
 
                 for i in 1..parameters.len() - 1 {
                     match parameters[i].as_str() {
+                        "--lib" | "-lib" => {
+                            options.emit_object = true;
+                        }
                         "--name" | "-n" => {
-                            options.name = parameters[index].clone();
+                            options.name = parameters[i + 1].clone();
                         }
                         "--target" | "-t" => {
                             if TARGETS.contains(&parameters[i + 1].as_str()) {
@@ -125,7 +125,7 @@ fn main() {
 
                             logging::log(logging::LogType::ERROR, &format!(
                                 "The target '{}' is not supported, see the list with Thrushr --print-targets.",
-                                &parameters[index]
+                                &parameters[i + 1]
                             ));
 
                             return;
@@ -228,18 +228,7 @@ fn main() {
         }
     }
 
-    if &options.name == "main" {
-        options.name = FILE_NAME_WITH_EXT
-            .lock()
-            .unwrap()
-            .as_str()
-            .split(".")
-            .next()
-            .unwrap()
-            .to_string();
-    }
-
-    match &options.name == "main" {
+    match FILE_NAME_WITH_EXT.lock().unwrap().as_str() == "main.th" {
         true => {
             options.is_main = true;
         }
@@ -493,6 +482,14 @@ fn compile_help() {
             .bold(),
         "-b".custom_color(CustomColor::new(141, 141, 142)).bold(),
         "Compile the code into executable.".bold()
+    );
+
+    println!(
+        "{} ({} | {}) {}",
+        "•".bold(),
+        "--lib".custom_color(CustomColor::new(141, 141, 142)).bold(),
+        "-lib".custom_color(CustomColor::new(141, 141, 142)).bold(),
+        "Compile the file to an object and then link it to an executable.".bold()
     );
 
     println!(

@@ -4,7 +4,7 @@ use {
             backend::compiler::{Instruction, Options, Scope},
             diagnostic::Diagnostic,
             error::{ThrushError, ThrushErrorKind},
-            FILE_PATH,
+            logging, FILE_PATH,
         },
         lexer::{DataTypes, Token, TokenKind},
     },
@@ -38,6 +38,7 @@ pub struct Parser<'instr, 'a> {
     scope: usize,
     scoper: ThrushScoper<'instr>,
     diagnostics: Diagnostic,
+    has_entry_point: bool,
 }
 
 impl<'instr, 'a> Parser<'instr, 'a> {
@@ -55,6 +56,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             scope: 0,
             scoper: ThrushScoper::new(),
             diagnostics: Diagnostic::new(FILE_PATH.lock().unwrap().to_string()),
+            has_entry_point: false,
         }
     }
 
@@ -74,7 +76,14 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             }
         }
 
-        if !self.errors.is_empty() {
+        if self.options.unwrap().is_main && !self.has_entry_point {
+            logging::log(
+                logging::LogType::ERROR,
+                "Missing entry point in main.th file. Write this: --> fn main() {} <--",
+            );
+
+            return Err(String::from("Compilation proccess ended with errors."));
+        } else if !self.errors.is_empty() {
             self.errors.iter().for_each(|error| {
                 self.diagnostics.report(error);
             });
@@ -383,6 +392,18 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     fn function(&mut self, is_public: bool) -> Result<Instruction<'instr>, ThrushError> {
         self.only_advance()?;
 
+        if self.scope != 0 {
+            return Err(ThrushError::Parse(
+                ThrushErrorKind::SyntaxError,
+                String::from("Syntax Error"),
+                String::from(
+                    "The functions must go in the global scope. Rewrite it in the global scope.",
+                ),
+                self.previous().span,
+                self.previous().line,
+            ));
+        }
+
         self.begin_function();
 
         let name: &'instr Token = self.consume(
@@ -392,10 +413,17 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             String::from("Expected def <name>."),
         )?;
 
-        if name.lexeme.as_ref().unwrap() == "main"
-            && self.scope == 0
-            && self.options.unwrap().is_main
-        {
+        if name.lexeme.as_ref().unwrap() == "main" && self.options.unwrap().is_main {
+            if self.has_entry_point {
+                return Err(ThrushError::Parse(
+                    ThrushErrorKind::SyntaxError,
+                    String::from("Duplicated Entry Point"),
+                    String::from("The language not support two entry points, remove one."),
+                    name.span,
+                    name.line,
+                ));
+            }
+
             self.consume(
                 TokenKind::LParen,
                 ThrushErrorKind::SyntaxError,
@@ -421,6 +449,8 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             }
 
             if self.peek().kind == TokenKind::LBrace {
+                self.has_entry_point = true;
+
                 return Ok(Instruction::EntryPoint {
                     body: Box::new(self.block()?),
                 });
