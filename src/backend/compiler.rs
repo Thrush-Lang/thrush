@@ -13,7 +13,7 @@ use {
         builder::Builder,
         context::Context,
         module::{Linkage, Module},
-        targets::{TargetMachine, TargetTriple},
+        targets::{CodeModel, RelocMode, TargetMachine, TargetTriple},
         types::{ArrayType, FloatType, FunctionType, IntType, VectorType},
         values::{
             BasicMetadataValueEnum, BasicValue, BasicValueEnum, FunctionValue, GlobalValue,
@@ -656,6 +656,8 @@ pub struct Options {
     pub linking: Linking,
     pub path: PathBuf,
     pub is_main: bool,
+    pub reloc_mode: RelocMode,
+    pub code_model: CodeModel,
 }
 
 impl Default for Options {
@@ -670,6 +672,8 @@ impl Default for Options {
             linking: Linking::default(),
             path: PathBuf::new(),
             is_main: true,
+            reloc_mode: RelocMode::Default,
+            code_model: CodeModel::Default,
         }
     }
 }

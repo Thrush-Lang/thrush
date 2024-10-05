@@ -147,6 +147,44 @@ fn main() {
                                 options.optimization = OPT::None;
                             }
                         },
+
+                        "--codemodel" | "-codemd" => match parameters[i + 1].as_str() {
+                            "default" => {
+                                options.code_model = CodeModel::Default;
+                            }
+                            "jit" => {
+                                options.code_model = CodeModel::JITDefault;
+                            }
+                            "sys" => {
+                                options.code_model = CodeModel::Kernel;
+                            }
+                            "medium" => {
+                                options.code_model = CodeModel::Medium;
+                            }
+                            "large" => options.code_model = CodeModel::Large,
+                            _ => {
+                                options.code_model = CodeModel::Default;
+                            }
+                        },
+
+                        "--reloc" | "-reloc" => match parameters[i + 1].as_str() {
+                            "default" => {
+                                options.reloc_mode = RelocMode::Default;
+                            }
+                            "dynamic" => {
+                                options.reloc_mode = RelocMode::DynamicNoPic;
+                            }
+                            "pic" => {
+                                options.reloc_mode = RelocMode::PIC;
+                            }
+                            "static" => {
+                                options.reloc_mode = RelocMode::Static;
+                            }
+                            _ => {
+                                options.reloc_mode = RelocMode::Default;
+                            }
+                        },
+
                         "--emit-llvm" | "-emit-llvm" => {
                             options.emit_llvm = true;
                         }
@@ -254,8 +292,8 @@ fn main() {
                             "",
                             "",
                             opt,
-                            RelocMode::Default,
-                            CodeModel::Default,
+                            options.reloc_mode,
+                            options.code_model,
                         )
                         .unwrap();
 
@@ -456,6 +494,30 @@ fn compile_help() {
             .bold(),
         "-b".custom_color(CustomColor::new(141, 141, 142)).bold(),
         "Compile the code into executable.".bold()
+    );
+
+    println!(
+        "{} ({} | {}) {}",
+        "•".bold(),
+        "--reloc [mode]"
+            .custom_color(CustomColor::new(141, 141, 142))
+            .bold(),
+        "-reloc [mode]"
+            .custom_color(CustomColor::new(141, 141, 142))
+            .bold(),
+        "Indicate how references to memory addresses are handled.".bold()
+    );
+
+    println!(
+        "{} ({} | {}) {}",
+        "•".bold(),
+        "--codemodel [model]"
+            .custom_color(CustomColor::new(141, 141, 142))
+            .bold(),
+        "-codemd [model]"
+            .custom_color(CustomColor::new(141, 141, 142))
+            .bold(),
+        "Define how code is organized and accessed in the executable.".bold()
     );
 }
 
