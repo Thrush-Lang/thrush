@@ -101,7 +101,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn variable(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         let name: &'instr Token = self.consume(
             TokenKind::Identifier,
@@ -112,7 +112,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         let mut kind: Option<DataTypes> = match &self.peek().kind {
             TokenKind::DataType(kind) => {
-                self.advance();
+                self.only_advance()?;
 
                 Some(kind.defer())
             }
@@ -131,7 +131,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         };
 
         if self.peek().kind == TokenKind::SemiColon && kind.is_none() {
-            self.advance();
+            self.only_advance()?;
 
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
@@ -292,7 +292,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn public(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         match &self.peek().kind {
             TokenKind::Fn => Ok(self.function(true)?),
@@ -301,7 +301,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn ret(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         if self.function == 0 {
             return Err(ThrushError::Parse(
@@ -361,13 +361,13 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn block(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         self.begin_scope();
 
         let mut stmts: Vec<Instruction> = Vec::new();
 
-        while !self.match_token(TokenKind::RBrace) {
+        while !self.match_token(TokenKind::RBrace)? {
             stmts.push(self.parse()?)
         }
 
@@ -381,7 +381,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn function(&mut self, is_public: bool) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         self.begin_function();
 
@@ -444,8 +444,8 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         let mut params: Vec<Instruction> = Vec::with_capacity(8);
 
-        while !self.match_token(TokenKind::RParen) {
-            if self.match_token(TokenKind::Comma) {
+        while !self.match_token(TokenKind::RParen)? {
+            if self.match_token(TokenKind::Comma)? {
                 continue;
             }
 
@@ -459,7 +459,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 ));
             }
 
-            if !self.match_token(TokenKind::Identifier) {
+            if !self.match_token(TokenKind::Identifier)? {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
@@ -471,7 +471,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
             let ident: &str = self.previous().lexeme.as_ref().unwrap();
 
-            if !self.match_token(TokenKind::ColonColon) {
+            if !self.match_token(TokenKind::ColonColon)? {
                 return Err(ThrushError::Parse(
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
@@ -483,7 +483,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
             let kind: DataTypes = match &self.peek().kind {
                 TokenKind::DataType(kind) => {
-                    self.advance();
+                    self.only_advance()?;
 
                     kind.defer()
                 }
@@ -512,7 +512,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         let return_kind: Option<DataTypes> = match &self.peek().kind {
             TokenKind::DataType(kind) => {
-                self.advance();
+                self.only_advance()?;
                 Some(kind.defer())
             }
             _ => None,
@@ -577,7 +577,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn print(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         self.consume(
             TokenKind::LParen,
@@ -588,8 +588,8 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         let mut args: Vec<Instruction<'instr>> = Vec::with_capacity(24);
 
-        while !self.match_token(TokenKind::RParen) {
-            if self.match_token(TokenKind::Comma) {
+        while !self.match_token(TokenKind::RParen)? {
+            if self.match_token(TokenKind::Comma)? {
                 continue;
             }
 
@@ -606,7 +606,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             args.push(self.expr()?);
         }
 
-        if args.is_empty() && self.match_token(TokenKind::SemiColon) {
+        if args.is_empty() && self.match_token(TokenKind::SemiColon)? {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
                 String::from("Syntax Error"),
@@ -667,7 +667,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     }
 
     fn println(&mut self) -> Result<Instruction<'instr>, ThrushError> {
-        self.advance();
+        self.only_advance()?;
 
         self.consume(
             TokenKind::LParen,
@@ -678,8 +678,8 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
         let mut args: Vec<Instruction<'instr>> = Vec::with_capacity(24);
 
-        while !self.match_token(TokenKind::RParen) {
-            if self.match_token(TokenKind::Comma) {
+        while !self.match_token(TokenKind::RParen)? {
+            if self.match_token(TokenKind::Comma)? {
                 continue;
             }
 
@@ -704,7 +704,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             args.push(expr);
         }
 
-        if args.is_empty() && self.match_token(TokenKind::SemiColon) {
+        if args.is_empty() && self.match_token(TokenKind::SemiColon)? {
             return Err(ThrushError::Parse(
                 ThrushErrorKind::SyntaxError,
                 String::from("Syntax Error"),
@@ -758,11 +758,11 @@ impl<'instr, 'a> Parser<'instr, 'a> {
     fn primary(&mut self) -> Result<Instruction<'instr>, ThrushError> {
         let primary: Instruction = match &self.peek().kind {
             TokenKind::String => {
-                Instruction::String(self.advance().lexeme.as_ref().unwrap().to_string())
+                Instruction::String(self.advance()?.lexeme.as_ref().unwrap().to_string())
             }
             kind => match kind {
                 TokenKind::Integer(kind, num) => {
-                    self.advance();
+                    self.only_advance()?;
 
                     match kind {
                         DataTypes::I8 => Instruction::Integer(DataTypes::I8, (*num as i8).into()),
@@ -796,13 +796,13 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 }
 
                 TokenKind::Identifier => {
-                    self.advance();
+                    self.only_advance()?;
 
                     let scope: Scope = self.find_scope(self.previous().lexeme.as_ref().unwrap());
 
                     if self.peek().kind == TokenKind::Eq {
                         let name: &str = self.previous().lexeme.as_ref().unwrap();
-                        self.advance();
+                        self.only_advance()?;
 
                         let expr: Instruction<'instr> = self.expr()?;
 
@@ -840,19 +840,19 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 }
 
                 TokenKind::True => {
-                    self.advance();
+                    self.only_advance()?;
 
                     Instruction::Boolean(true)
                 }
 
                 TokenKind::False => {
-                    self.advance();
+                    self.only_advance()?;
 
                     Instruction::Boolean(false)
                 }
 
                 TokenKind::RParen | TokenKind::RBrace => {
-                    self.advance();
+                    self.only_advance()?;
 
                     return Err(ThrushError::Parse(
                             ThrushErrorKind::SyntaxError,
@@ -864,7 +864,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 }
 
                 kind => {
-                    self.advance();
+                    self.only_advance()?;
 
                     println!("{:?}", self.previous());
 
@@ -890,7 +890,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         help: String,
     ) -> Result<&'instr Token, ThrushError> {
         if self.peek().kind == kind {
-            return Ok(self.advance());
+            return self.advance();
         }
 
         println!("{:?}", self.peek());
@@ -940,23 +940,46 @@ impl<'instr, 'a> Parser<'instr, 'a> {
         self.function -= 1;
     }
 
-    fn match_token(&mut self, kind: TokenKind) -> bool {
+    fn match_token(&mut self, kind: TokenKind) -> Result<bool, ThrushError> {
         if self.end() {
-            return false;
+            return Ok(false);
         } else if self.peek().kind == kind {
-            self.advance();
-            return true;
+            self.only_advance()?;
+
+            return Ok(true);
         }
 
-        false
+        Ok(false)
     }
 
-    fn advance(&mut self) -> &'instr Token {
+    fn only_advance(&mut self) -> Result<(), ThrushError> {
         if !self.end() {
             self.current += 1;
+            return Ok(());
         }
 
-        self.previous()
+        Err(ThrushError::Parse(
+            ThrushErrorKind::SyntaxError,
+            String::from("Undeterminated Code"),
+            String::from("The code has ended abruptly and without any order, review the code and write the syntax correctly."),
+            self.previous().span,
+            self.previous().line,
+        ))
+    }
+
+    fn advance(&mut self) -> Result<&'instr Token, ThrushError> {
+        if !self.end() {
+            self.current += 1;
+            return Ok(self.previous());
+        }
+
+        Err(ThrushError::Parse(
+            ThrushErrorKind::SyntaxError,
+            String::from("Undeterminated Code"),
+            String::from("The code has ended abruptly and without any order, review the code and write the syntax correctly."),
+            self.previous().span,
+            self.previous().line,
+        ))
     }
 
     fn peek(&self) -> Token {

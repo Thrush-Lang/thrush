@@ -276,7 +276,6 @@ fn main() {
             match instructions {
                 Ok(instructions) => {
                     module.set_triple(&options.target_triple);
-                    module.strip_debug_info();
 
                     let opt: OptimizationLevel = match &options.optimization {
                         OPT::None => OptimizationLevel::None,
