@@ -57,8 +57,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     fn start(&mut self) {
-        self.define_standard_functions();
-
         while !self.is_end() {
             let instr: &Instruction<'_> = self.advance();
             self.codegen(instr);
@@ -92,6 +90,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             }
 
             Instruction::Println(data) | Instruction::Print(data) => {
+                if self.module.get_function("printf").is_none() {
+                    self.define_printf();
+                }
+
                 self.emit_print(data);
             }
 
@@ -112,10 +114,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
             _ => todo!(),
         }
-    }
-
-    fn define_standard_functions(&mut self) {
-        self.define_printf();
     }
 
     fn define_printf(&mut self) {
