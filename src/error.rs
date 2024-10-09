@@ -1,11 +1,9 @@
-use super::frontend::lexer::TokenSpan;
-
 #[derive(Default, Debug)]
 pub enum ThrushError {
     Compile(String),
-    Parse(ThrushErrorKind, String, String, TokenSpan, usize),
-    Lex(ThrushErrorKind, String, String, TokenSpan, usize),
-    Scope(ThrushErrorKind, String, String, TokenSpan, usize),
+    Parse(ThrushErrorKind, String, String, usize),
+    Lex(ThrushErrorKind, String, String, usize),
+    Scope(ThrushErrorKind, String, String, usize),
     #[default]
     None,
 }

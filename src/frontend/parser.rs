@@ -1,7 +1,7 @@
 use {
     super::{
         super::{
-            backend::compiler::{Instruction, Options, Scope},
+            backend::compiler::{Instruction, Options},
             diagnostic::Diagnostic,
             error::{ThrushError, ThrushErrorKind},
             logging, FILE_PATH,
@@ -75,18 +75,17 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 }
             }
         }
+        if !self.errors.is_empty() {
+            self.errors.iter().for_each(|error| {
+                self.diagnostics.report(error);
+            });
 
-        if self.options.unwrap().is_main && !self.has_entry_point {
+            return Err(String::from("Compilation proccess ended with errors."));
+        } else if self.options.unwrap().is_main && !self.has_entry_point {
             logging::log(
                 logging::LogType::ERROR,
                 "Missing entry point in main.th file. Write this: --> fn main() {} <--",
             );
-
-            return Err(String::from("Compilation proccess ended with errors."));
-        } else if !self.errors.is_empty() {
-            self.errors.iter().for_each(|error| {
-                self.diagnostics.report(error);
-            });
 
             return Err(String::from("Compilation proccess ended with errors."));
         }
@@ -133,7 +132,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
                     String::from("Expected an type for the variable."),
-                    name.span,
                     name.line,
                 ));
             }
@@ -148,7 +146,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 String::from(
                     "Variable type is undefined. Did you forget to specify the variable type to undefined variable?",
                 ),
-                name.span,
                 name.line,
             ));
         } else if self.peek().kind == TokenKind::SemiColon {
@@ -196,7 +193,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                         kind.unwrap(),
                                         data_type
                                     ),
-                                    name.span,
                                     name.line,
                                 ));
                             }
@@ -213,7 +209,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                         kind.unwrap(),
                                         data_type
                                     ),
-                                    name.span,
                                     name.line,
                                 ));
                             }
@@ -239,7 +234,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                 kind.unwrap(),
                                 data_type
                             ),
-                            name.span,
                             name.line,
                         ));
                     }
@@ -262,7 +256,28 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                 kind.as_ref().unwrap(),
                                 DataTypes::String
                             ),
-                            name.span,
+                            name.line,
+                        ));
+                    }
+                }
+
+                Instruction::Boolean(_) => {
+                    if kind.as_ref().unwrap() != &DataTypes::Bool {
+                        self.consume(
+                            TokenKind::SemiColon,
+                            ThrushErrorKind::SyntaxError,
+                            String::from("Syntax Error"),
+                            String::from("Expected ';'."),
+                        )?;
+
+                        return Err(ThrushError::Parse(
+                            ThrushErrorKind::SyntaxError,
+                            String::from("Syntax Error"),
+                            format!(
+                                "Variable type mismatch. Expected '{}' but found '{}'.",
+                                kind.as_ref().unwrap(),
+                                DataTypes::String
+                            ),
                             name.line,
                         ));
                     }
@@ -317,7 +332,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 ThrushErrorKind::SyntaxError,
                 String::from("Syntax Error"),
                 String::from("Return statement outside of function. Invoke this keyword in scope of function definition."),
-                self.peek().span,
                 self.peek().line,
             ));
         }
@@ -399,7 +413,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 String::from(
                     "The functions must go in the global scope. Rewrite it in the global scope.",
                 ),
-                self.previous().span,
                 self.previous().line,
             ));
         }
@@ -419,7 +432,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Duplicated Entry Point"),
                     String::from("The language not support two entry points, remove one."),
-                    name.span,
                     name.line,
                 ));
             }
@@ -443,7 +455,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
                     String::from("Expected '{'."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -459,7 +470,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
                     String::from("Expected 'block' for the function body."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -484,7 +494,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::TooManyArguments,
                     String::from("Syntax Error"),
                     String::from("Too many arguments for the function. The maximum number of arguments is 8."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -494,7 +503,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
                     String::from("Expected argument name."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -506,7 +514,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::SyntaxError,
                     String::from("Syntax Error"),
                     String::from("Expected '::'."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -522,7 +529,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                         ThrushErrorKind::SyntaxError,
                         String::from("Syntax Error"),
                         String::from("Expected argument type."),
-                        self.peek().span,
                         self.peek().line,
                     ));
                 }
@@ -557,7 +563,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                         ThrushErrorKind::SyntaxError,
                         String::from("Syntax Error"),
                         format!("Missing return statement with type '{}', you should add a return statement with type '{}'.", kind, kind),
-                        name.span,
                         name.line,
                     ));
                 }
@@ -573,7 +578,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                 self.ret.as_ref().unwrap(),
                                 kind
                             ),
-                            name.span,
                             name.line,
                         ))
                     }
@@ -628,7 +632,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::TooManyArguments,
                     String::from("Syntax Error"),
                     String::from("Expected ')'. Too many arguments. Max is 24."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -643,7 +646,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 String::from(
                     "Expected at least 1 argument for 'println' call. Like 'print(`Hi!`);'",
                 ),
-                self.peek().span,
                 self.peek().line,
             ));
         } else if let Instruction::String(str) = &args[0] {
@@ -661,7 +663,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     String::from(
                         "Expected at least 2 arguments for 'println' call. Like 'print(`%d`, 2);'",
                     ),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -683,7 +684,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                         String::from(
                             "You can't print strings that contain newlines. Use 'println' instead.",
                         ),
-                        self.peek().span,
                         self.peek().line,
                     ));
                 }
@@ -718,7 +718,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     ThrushErrorKind::TooManyArguments,
                     String::from("Syntax Error"),
                     String::from("Expected ')'. Too many arguments. Max is 24."),
-                    self.peek().span,
                     self.peek().line,
                 ));
             }
@@ -741,11 +740,10 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 String::from(
                     "Expected at least 1 argument for 'println' call. Like 'println(`Hi!`);'",
                 ),
-                self.peek().span,
                 self.peek().line,
             ));
         } else if let Instruction::String(str) = &args[0] {
-            if args.len() <= 1 && C_FMTS.iter().any(|fmt| str.contains(*fmt)) {
+            if args.len() <= 1 && C_FMTS.iter().any(|fmt| str.trim().contains(*fmt)) {
                 self.consume(
                     TokenKind::SemiColon,
                     ThrushErrorKind::SyntaxError,
@@ -759,7 +757,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                     String::from(
                         "Expected at least 2 arguments for 'println' call. Like 'println(`%d`, 2);'",
                     ),
-                    self.peek().span,
+
                     self.peek().line,
                 ));
             }
@@ -828,7 +826,8 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                 TokenKind::Identifier => {
                     self.only_advance()?;
 
-                    let scope: Scope = self.find_scope(self.previous().lexeme.as_ref().unwrap());
+                    let kind: DataTypes =
+                        self.find_variable(self.previous().lexeme.as_ref().unwrap());
 
                     if self.peek().kind == TokenKind::Eq {
                         let name: &str = self.previous().lexeme.as_ref().unwrap();
@@ -836,7 +835,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
 
                         let expr: Instruction<'instr> = self.expr()?;
 
-                        match scope {
+                        /* match kind.1 {
                             Scope::Global => match self.globals.get(name) {
                                 None => {}
                                 Some(instr) => {
@@ -850,22 +849,19 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                                     todo!()
                                 }
                             },
-
-                            Scope::Unreachable => {}
-                        }
+                        } */
 
                         return Ok(Instruction::MutVar {
                             name,
                             value: Box::new(expr),
-                            scope,
+                            kind,
                         });
                     }
 
                     Instruction::RefVar {
                         name: self.previous().lexeme.as_ref().unwrap(),
-                        scope,
                         line: self.previous().line,
-                        span: self.previous().span,
+                        kind,
                     }
                 }
 
@@ -888,7 +884,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                             ThrushErrorKind::SyntaxError,
                             String::from("Syntax Error"),
                             format!("Expected expression, found '{}'. Is this a function call or an function definition?", kind),
-                            self.peek().span,
                             self.peek().line,
                         ));
                 }
@@ -902,7 +897,6 @@ impl<'instr, 'a> Parser<'instr, 'a> {
                         ThrushErrorKind::SyntaxError,
                         String::from("Syntax Error"),
                         format!("Unexpected code '{}', check the code and review the syntax rules in the documentation.", kind),
-                        self.peek().span,
                         self.peek().line,
                     ));
                 }
@@ -929,19 +923,22 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             error_kind,
             error_title,
             help,
-            self.peek().span,
             self.peek().line,
         ))
     }
 
-    fn find_scope(&self, name: &str) -> Scope {
-        if self.locals[self.scope - 1].contains_key(name) {
-            return Scope::Local;
-        } else if self.globals.contains_key(name) {
-            return Scope::Global;
+    fn find_variable(&self, name: &str) -> DataTypes {
+        for index in (0..self.scope).rev() {
+            if self.locals[index].contains_key(name) {
+                return self.locals[index].get(name).unwrap().defer();
+            }
         }
 
-        Scope::Unreachable
+        if self.globals.contains_key(name) {
+            return self.globals.get(name).unwrap().defer();
+        }
+
+        DataTypes::Void
     }
 
     fn define_global(&mut self, name: &'instr str, kind: DataTypes) {
@@ -992,7 +989,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             ThrushErrorKind::SyntaxError,
             String::from("Undeterminated Code"),
             String::from("The code has ended abruptly and without any order, review the code and write the syntax correctly."),
-            self.previous().span,
+
             self.previous().line,
         ))
     }
@@ -1007,7 +1004,7 @@ impl<'instr, 'a> Parser<'instr, 'a> {
             ThrushErrorKind::SyntaxError,
             String::from("Undeterminated Code"),
             String::from("The code has ended abruptly and without any order, review the code and write the syntax correctly."),
-            self.previous().span,
+
             self.previous().line,
         ))
     }
@@ -1079,7 +1076,6 @@ impl<'instr> Instruction<'instr> {
 #[derive(Debug)]
 pub struct ThrushScoper<'ctx> {
     blocks: Vec<ThrushBlock<'ctx>>,
-    count: usize,
     errors: Vec<ThrushError>,
     diagnostic: Diagnostic,
 }
@@ -1098,15 +1094,12 @@ impl<'ctx> ThrushScoper<'ctx> {
     pub fn new() -> Self {
         Self {
             blocks: Vec::new(),
-            count: 0,
             errors: Vec::with_capacity(10),
             diagnostic: Diagnostic::new(FILE_PATH.lock().unwrap().to_string()),
         }
     }
 
     pub fn scope(&mut self, instr: Instruction<'ctx>) {
-        self.count += 1;
-
         if let Instruction::Block { stmts, .. } = instr {
             let mut instructions: Vec<ThrushInstruction> = Vec::with_capacity(stmts.len());
 
@@ -1181,15 +1174,12 @@ impl<'ctx> ThrushScoper<'ctx> {
         }
 
         match instr {
-            Instruction::RefVar {
-                name, line, span, ..
-            } => {
+            Instruction::RefVar { name, line, .. } => {
                 if !self.is_at_current_scope(name, None, index) {
                     return Err(ThrushError::Scope(
                         ThrushErrorKind::VariableNotDefined,
                         String::from("Undefined Variable"),
                         format!("The variable `{}` not found in this scope.", name),
-                        *span,
                         *line,
                     ));
                 }
@@ -1204,7 +1194,6 @@ impl<'ctx> ThrushScoper<'ctx> {
                             "The variable `{}` is unreacheable to the current scope.",
                             name
                         ),
-                        *span,
                         *line,
                     ));
                 }
@@ -1245,11 +1234,7 @@ impl<'ctx> ThrushScoper<'ctx> {
                 Ok(())
             }
 
-            stmt => {
-                println!("{:?}", stmt);
-
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
 
@@ -1260,7 +1245,7 @@ impl<'ctx> ThrushScoper<'ctx> {
         block: Option<&Instruction<'ctx>>,
         mut depth: usize,
     ) -> bool {
-        if depth == self.blocks.len() - 1 {
+        if depth > self.blocks.len() {
             return false;
         }
 
@@ -1285,29 +1270,55 @@ impl<'ctx> ThrushScoper<'ctx> {
             }
         }
 
-        self.blocks[depth]
-            .instructions
-            .iter()
-            .rev()
-            .any(|instr| match instr.instr {
-                Instruction::Var { name: n, line, .. } if *n == *name => {
-                    if line > refvar_line {
-                        return false;
-                    }
+        if self.blocks.len() == 1 {
+            self.blocks[0]
+                .instructions
+                .iter()
+                .rev()
+                .any(|instr| match instr.instr {
+                    Instruction::Var { name: n, line, .. } if *n == *name => {
+                        if line > refvar_line {
+                            return false;
+                        }
 
-                    true
-                }
-                Instruction::Block { .. } => self.is_reacheable_at_current_scope(
-                    name,
-                    refvar_line,
-                    Some(&instr.instr),
-                    depth,
-                ),
-                _ => {
-                    depth += 1;
-                    self.is_reacheable_at_current_scope(name, refvar_line, None, depth)
-                }
-            })
+                        true
+                    }
+                    Instruction::Block { .. } => self.is_reacheable_at_current_scope(
+                        name,
+                        refvar_line,
+                        Some(&instr.instr),
+                        depth,
+                    ),
+                    _ => {
+                        depth += 1;
+                        self.is_reacheable_at_current_scope(name, refvar_line, None, depth)
+                    }
+                })
+        } else {
+            self.blocks[depth]
+                .instructions
+                .iter()
+                .rev()
+                .any(|instr| match instr.instr {
+                    Instruction::Var { name: n, line, .. } if *n == *name => {
+                        if line > refvar_line {
+                            return false;
+                        }
+
+                        true
+                    }
+                    Instruction::Block { .. } => self.is_reacheable_at_current_scope(
+                        name,
+                        refvar_line,
+                        Some(&instr.instr),
+                        depth,
+                    ),
+                    _ => {
+                        depth += 1;
+                        self.is_reacheable_at_current_scope(name, refvar_line, None, depth)
+                    }
+                })
+        }
     }
 
     fn is_at_current_scope(
@@ -1316,7 +1327,7 @@ impl<'ctx> ThrushScoper<'ctx> {
         block: Option<&Instruction<'ctx>>,
         mut depth: usize,
     ) -> bool {
-        if depth == self.blocks.len() - 1 {
+        if depth > self.blocks.len() {
             return false;
         }
 
@@ -1333,19 +1344,36 @@ impl<'ctx> ThrushScoper<'ctx> {
             }
         }
 
-        self.blocks[depth]
-            .instructions
-            .iter()
-            .rev()
-            .any(|instr| match &instr.instr {
-                Instruction::Var { name: n, .. } => *n == name,
-                Instruction::Block { .. } => {
-                    self.is_at_current_scope(name, Some(&instr.instr), depth)
-                }
-                _ => {
-                    depth += 1;
-                    self.is_at_current_scope(name, None, depth)
-                }
-            })
+        if self.blocks.len() == 1 {
+            self.blocks[0]
+                .instructions
+                .iter()
+                .rev()
+                .any(|instr| match &instr.instr {
+                    Instruction::Var { name: n, .. } => *n == name,
+                    Instruction::Block { .. } => {
+                        self.is_at_current_scope(name, Some(&instr.instr), depth)
+                    }
+                    _ => {
+                        depth += 1;
+                        self.is_at_current_scope(name, None, depth)
+                    }
+                })
+        } else {
+            self.blocks[depth]
+                .instructions
+                .iter()
+                .rev()
+                .any(|instr| match &instr.instr {
+                    Instruction::Var { name: n, .. } => *n == name,
+                    Instruction::Block { .. } => {
+                        self.is_at_current_scope(name, Some(&instr.instr), depth)
+                    }
+                    _ => {
+                        depth += 1;
+                        self.is_at_current_scope(name, None, depth)
+                    }
+                })
+        }
     }
 }

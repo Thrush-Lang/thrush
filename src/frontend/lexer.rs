@@ -94,7 +94,6 @@ impl<'a> Lexer<'a> {
                         String::from(
                             "Unterminated multiline comment. Did you forget to close the string with a '*/'?",
                         ),
-                        (self.token_start, self.token_end),
                         self.line,
                     ));
                 }
@@ -129,7 +128,6 @@ impl<'a> Lexer<'a> {
                     ThrushErrorKind::UnknownChar,
                     String::from("Unknown character."),
                     String::from("Did you provide a valid character?"),
-                    (self.token_start, self.token_end),
                     self.line,
                 ));
             }
@@ -139,7 +137,6 @@ impl<'a> Lexer<'a> {
     }
 
     fn identifier(&mut self) -> Result<(), ThrushError> {
-        self.begin_token();
 
         while self.is_alpha(self.peek()) || self.peek().is_ascii_digit() {
             self.advance();
@@ -197,19 +194,14 @@ impl<'a> Lexer<'a> {
                     kind: TokenKind::Identifier,
                     lexeme: Some(self.lexeme()),
                     line: self.line,
-                    span: (self.token_start, self.token_end),
                 });
             }
         }
-
-        self.end_token();
 
         Ok(())
     }
 
     fn integer(&mut self) -> Result<(), ThrushError> {
-        self.begin_token();
-
         while self.peek().is_ascii_digit()
             || self.peek() == b'_' && self.peek_next().is_ascii_digit()
             || self.peek() == b'.' && self.peek_next().is_ascii_digit()
@@ -217,10 +209,9 @@ impl<'a> Lexer<'a> {
             self.advance();
         }
 
-        self.end_token();
 
         let kind: DataTypes =
-            self.eval_integer_type(self.lexeme(), (self.token_start, self.token_end), self.line)?;
+            self.eval_integer_type(self.lexeme(), self.line)?;
 
         let num: Result<f64, ParseFloatError> = self.lexeme().parse::<f64>();
 
@@ -232,7 +223,6 @@ impl<'a> Lexer<'a> {
                 String::from(
                     "Did you provide a valid number with the correct format and not out of bounds?",
                 ),
-                (self.token_start, self.token_end),
                 self.line,
             ));
         }
@@ -240,15 +230,13 @@ impl<'a> Lexer<'a> {
         self.tokens.push(Token {
             kind: TokenKind::Integer(kind, num.unwrap()),
             lexeme: None,
-            line: self.line,
-            span: (self.token_start, self.token_end),
+            line: self.line
         });
 
         Ok(())
     }
 
     fn string(&mut self) -> Result<(), ThrushError> {
-        self.begin_token();
 
         while self.peek() != b'"' && !self.end() {
             self.advance();
@@ -261,13 +249,11 @@ impl<'a> Lexer<'a> {
                 String::from(
                     "Unterminated string. Did you forget to close the string with a '\"'?",
                 ),
-                (self.token_start, self.token_end),
                 self.line,
             ));
         }
 
         self.advance();
-        self.end_token();
 
         let mut string: String =
             String::from_utf8_lossy(&self.code[self.start + 1..self.current - 1]).to_string();
@@ -280,7 +266,6 @@ impl<'a> Lexer<'a> {
             kind: TokenKind::String,
             lexeme: Some(string),
             line: self.line,
-            span: (self.token_start, self.token_end),
         });
 
         Ok(())
@@ -289,7 +274,6 @@ impl<'a> Lexer<'a> {
     pub fn eval_integer_type(
         &self,
         lexeme: String,
-        span: TokenSpan,
         line: usize,
     ) -> Result<DataTypes, ThrushError> {
         if self.previous_token().kind == TokenKind::Minus && !lexeme.contains(".") {
@@ -306,7 +290,7 @@ impl<'a> Lexer<'a> {
 
                         String::from("The number is out of bounds."),
                         String::from("The size is out of bounds of an isize (-n to n)."),
-                        span,
+
                         line,
                     )),
                 },
@@ -315,7 +299,7 @@ impl<'a> Lexer<'a> {
 
                     String::from("The number is too long for an signed integer."),
                     String::from("Did you provide a valid number with the correct format and not out of bounds?"),
-                    span,
+
                     line,
                 )),
             };
@@ -327,7 +311,7 @@ impl<'a> Lexer<'a> {
       
                     String::from("The number is too big for an float."),
                     String::from("Did you provide a valid number with the correct format and not out of bounds?"),
-                    span,
+  
                     line,
                 )),
             };
@@ -344,7 +328,7 @@ impl<'a> Lexer<'a> {
         
                     String::from("The number is out of bounds."),
                     String::from("The size is out of bounds of an usize (0 to n)."),
-                    span,
+ 
                     line,
                 )),
             },
@@ -355,7 +339,7 @@ impl<'a> Lexer<'a> {
                 String::from(
                     "Did you provide a valid number with the correct format and not out of bounds?",
                 ),
-                span,
+
                 line,
             )),
         }
@@ -401,14 +385,6 @@ impl<'a> Lexer<'a> {
         self.current >= self.code.len()
     }
 
-    fn begin_token(&mut self) {
-        self.token_start = self.current;
-    }
-
-    fn end_token(&mut self) {
-        self.token_end = self.current;
-    }
-
     fn is_alpha(&self, ch: u8) -> bool {
         ch.is_ascii_lowercase() || ch.is_ascii_uppercase() || ch == b'_'
     }
@@ -418,14 +394,10 @@ impl<'a> Lexer<'a> {
     }
 
     fn make(&mut self, kind: TokenKind) {
-        self.begin_token();
-        self.end_token();
-
         self.tokens.push(Token {
             kind,
             lexeme: Some(self.lexeme()),
             line: self.line,
-            span: (self.token_start, self.token_end),
         });
     }
 }
@@ -434,7 +406,6 @@ impl<'a> Lexer<'a> {
 pub struct Token {
     pub lexeme: Option<String>,
     pub kind: TokenKind,
-    pub span: TokenSpan,
     pub line: usize,
 }
 

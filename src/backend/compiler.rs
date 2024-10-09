@@ -35,7 +35,9 @@ pub struct Compiler<'a, 'ctx> {
     context: &'ctx Context,
     instructions: &'ctx [Instruction<'ctx>],
     current: usize,
-    locals: HashMap<String, Instruction<'ctx>>,
+    globals: HashMap<&'a str, Instruction<'ctx>>,
+    locals: Vec<HashMap<&'a str, Instruction<'ctx>>>,
+    scope: usize,
 }
 
 impl<'a, 'ctx> Compiler<'a, 'ctx> {
@@ -51,7 +53,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             context,
             instructions,
             current: 0,
-            locals: HashMap::new(),
+            globals: HashMap::new(),
+            locals: vec![HashMap::new()],
+            scope: 0,
         }
         .start();
     }
@@ -66,9 +70,15 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     fn codegen(&mut self, instr: &'ctx Instruction<'ctx>) {
         match instr {
             Instruction::Block { stmts, .. } => {
+                self.scope += 1;
+                self.locals.push(HashMap::new());
+
                 stmts.iter().for_each(|instr| {
                     self.codegen(instr);
                 });
+
+                self.scope -= 1;
+                self.locals.pop();
             }
 
             Instruction::Function {
@@ -167,16 +177,23 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                 args.push(build_const_integer(self.context, kind, *num).into());
             }
 
-            Instruction::RefVar { name, scope, .. } => match scope {
-                Scope::Global => {
-                    // HASTA QUE SE IMPLEMENTE CONSTANT O STATIC
-                    todo!()
+            Instruction::RefVar { name, kind, .. } => match kind {
+                DataTypes::F32
+                | DataTypes::F64
+                | DataTypes::I8
+                | DataTypes::I16
+                | DataTypes::I32
+                | DataTypes::I64
+                | DataTypes::U8
+                | DataTypes::U16
+                | DataTypes::U32
+                | DataTypes::U64 => {
+                    if let Instruction::Value(pointer) = self.get_local(name) {
+                        args.push(pointer.value.into());
+                    }
                 }
-
-                Scope::Local => {
-                    let var: &Instruction<'_> = self.get_local(name);
-
-                    if let Instruction::Value(pointer) = var {
+                DataTypes::String | DataTypes::Bool => {
+                    if let Instruction::Value(pointer) = self.get_global(name) {
                         match pointer.kind {
                             DataTypes::String => match pointer.value {
                                 BasicValueEnum::PointerValue(vector) => {
@@ -185,18 +202,7 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
 
                                 _ => todo!(),
                             },
-
-                            DataTypes::F32
-                            | DataTypes::F64
-                            | DataTypes::I8
-                            | DataTypes::I16
-                            | DataTypes::I32
-                            | DataTypes::I64
-                            | DataTypes::U8
-                            | DataTypes::U16
-                            | DataTypes::U32
-                            | DataTypes::U64
-                            | DataTypes::Bool => {
+                            DataTypes::Bool => {
                                 args.push(pointer.value.into());
                             }
 
@@ -205,7 +211,9 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     }
                 }
 
-                Scope::Unreachable => {}
+                e => {
+                    println!("{e}")
+                }
             },
 
             _ => todo!(),
@@ -216,44 +224,8 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
             .unwrap();
     }
 
-    /* fn emit_puts(&mut self, instr: &Instruction) {
-        let pointer: PointerValue<'ctx> = match instr {
-            Instruction::String(string) => {
-                let kind: ArrayType<'_> = build_int_array_type_from_size(
-                    self.context,
-                    DataTypes::I8,
-                    string.len() as u32,
-                );
-
-                let global: GlobalValue<'ctx> =
-                    self.module
-                        .add_global(kind, Some(AddressSpace::default()), "");
-
-                set_globals_options(self.context, global, Some(instr));
-
-                self.builder
-                    .build_pointer_cast(
-                        global.as_pointer_value(),
-                        self.context.ptr_type(AddressSpace::default()),
-                        "",
-                    )
-                    .unwrap()
-            }
-
-            _ => todo!(),
-        };
-
-        self.builder
-            .build_call(
-                self.module.get_function("puts").unwrap(),
-                &[BasicMetadataValueEnum::PointerValue(pointer)],
-                "",
-            )
-            .unwrap();
-    } */
-
-    fn emit_variable(&mut self, name: &str, kind: &DataTypes, value: &Instruction) {
-        match kind {
+    fn emit_variable(&mut self, name: &'a str, kind: &DataTypes, value: &Instruction) {
+        let instr: Instruction<'ctx> = match kind {
             DataTypes::I8
             | DataTypes::I16
             | DataTypes::I32
@@ -349,13 +321,10 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     .set_alignment(4)
                     .unwrap();
 
-                self.locals.insert(
-                    name.to_string(),
-                    Instruction::Value(ThrushBasicValueEnum {
-                        kind: kind.defer(),
-                        value: load,
-                    }),
-                );
+                Instruction::Value(ThrushBasicValueEnum {
+                    kind: kind.defer(),
+                    value: load,
+                })
             }
 
             DataTypes::F32 | DataTypes::F64 => {
@@ -409,44 +378,54 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
                     .set_alignment(4)
                     .unwrap();
 
-                self.locals.insert(
-                    name.to_string(),
-                    Instruction::Value(ThrushBasicValueEnum {
-                        kind: kind.defer(),
-                        value: load,
-                    }),
-                );
+                Instruction::Value(ThrushBasicValueEnum {
+                    kind: kind.defer(),
+                    value: load,
+                })
             }
 
             DataTypes::String => match value {
-                Instruction::Null => {
-                    let string: PointerValue<'_> = self.emit_global_string("\0", name);
+                Instruction::Null => Instruction::Value(ThrushBasicValueEnum {
+                    kind: DataTypes::String,
+                    value: self.emit_global_string("\0", name).into(),
+                }),
 
-                    self.locals.insert(
-                        name.to_string(),
-                        Instruction::Value(ThrushBasicValueEnum {
-                            kind: DataTypes::String,
-                            value: string.into(),
-                        }),
-                    );
-                }
-
-                Instruction::String(string) => {
-                    let string: PointerValue<'_> = self.emit_global_string(string, name);
-
-                    self.locals.insert(
-                        name.to_string(),
-                        Instruction::Value(ThrushBasicValueEnum {
-                            kind: DataTypes::String,
-                            value: string.into(),
-                        }),
-                    );
-                }
+                Instruction::String(string) => Instruction::Value(ThrushBasicValueEnum {
+                    kind: DataTypes::String,
+                    value: self.emit_global_string(string, name).into(),
+                }),
 
                 _ => unreachable!(),
             },
 
+            DataTypes::Bool => match value {
+                Instruction::Boolean(bool) => Instruction::Value(ThrushBasicValueEnum {
+                    kind: DataTypes::Bool,
+                    value: self.emit_global_boolean(*bool).into(),
+                }),
+
+                _ => unimplemented!(),
+            },
+
             _ => todo!(),
+        };
+
+        if let Instruction::Value(instr) = instr {
+            match instr.kind {
+                DataTypes::F32
+                | DataTypes::F64
+                | DataTypes::I8
+                | DataTypes::I16
+                | DataTypes::I32
+                | DataTypes::I64
+                | DataTypes::U8
+                | DataTypes::U16
+                | DataTypes::U32
+                | DataTypes::U64 => {
+                    self.locals[self.scope - 1].insert(name, Instruction::Value(instr))
+                }
+                _ => self.globals.insert(name, Instruction::Value(instr)),
+            };
         }
     }
 
@@ -508,6 +487,31 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
         }
     }
 
+    fn emit_global_boolean(&mut self, value: bool) -> PointerValue<'ctx> {
+        let kind: IntType<'_> = self.context.bool_type();
+
+        let global: GlobalValue<'_> =
+            self.module
+                .add_global(kind, Some(AddressSpace::default()), "");
+
+        global.set_linkage(Linkage::Private);
+        global.set_visibility(GlobalVisibility::Protected);
+
+        if !value {
+            global.set_initializer(&kind.const_int(0, false));
+        } else {
+            global.set_initializer(&kind.const_int(1, false));
+        }
+
+        self.builder
+            .build_pointer_cast(
+                global.as_pointer_value(),
+                self.context.ptr_type(AddressSpace::default()),
+                "",
+            )
+            .unwrap()
+    }
+
     fn emit_global_string_constant(&mut self, string: &str) -> PointerValue<'ctx> {
         let kind: ArrayType<'_> = self.context.i8_type().array_type(string.len() as u32);
         let global: GlobalValue<'_> =
@@ -559,7 +563,17 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     }
 
     fn get_local(&self, name: &str) -> &Instruction {
-        self.locals.get(name).unwrap()
+        for index in (0..self.scope - 1).rev() {
+            if self.locals[index].contains_key(name) {
+                return self.locals[index].get(name).unwrap();
+            }
+        }
+
+        panic!()
+    }
+
+    fn get_global(&self, name: &str) -> &Instruction {
+        self.globals.get(name).unwrap()
     }
 
     fn advance(&mut self) -> &'ctx Instruction<'ctx> {
@@ -572,13 +586,6 @@ impl<'a, 'ctx> Compiler<'a, 'ctx> {
     fn is_end(&self) -> bool {
         self.current >= self.instructions.len()
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Scope {
-    Global,
-    Local,
-    Unreachable,
 }
 
 #[derive(Debug, Clone)]
@@ -614,21 +621,20 @@ pub enum Instruction<'ctx> {
     },
     RefVar {
         name: &'ctx str,
-        scope: Scope,
         line: usize,
-        span: (usize, usize),
+        kind: DataTypes,
     },
     MutVar {
         name: &'ctx str,
         value: Box<Instruction<'ctx>>,
-        scope: Scope,
+        kind: DataTypes,
     },
     Boolean(bool),
     Null,
 }
 
 #[derive(Default, Debug)]
-pub enum OPT {
+pub enum Opt {
     #[default]
     None,
     Low,
@@ -647,7 +653,7 @@ pub enum Linking {
 pub struct Options {
     pub name: String,
     pub target_triple: TargetTriple,
-    pub optimization: OPT,
+    pub optimization: Opt,
     pub interpret: bool,
     pub emit_llvm: bool,
     pub emit_object: bool,
@@ -664,7 +670,7 @@ impl Default for Options {
         Self {
             name: String::from("main"),
             target_triple: TargetMachine::get_default_triple(),
-            optimization: OPT::default(),
+            optimization: Opt::default(),
             interpret: false,
             emit_llvm: false,
             emit_object: false,
@@ -690,10 +696,10 @@ impl<'a, 'ctx> FileBuilder<'a, 'ctx> {
 
     pub fn build(self) {
         let opt_level: &str = match self.options.optimization {
-            OPT::None => "O0",
-            OPT::Low => "O1",
-            OPT::Mid => "O2",
-            OPT::Mcqueen => "O3",
+            Opt::None => "O0",
+            Opt::Low => "O1",
+            Opt::Mid => "O2",
+            Opt::Mcqueen => "O3",
         };
 
         let linking: &str = match self.options.linking {

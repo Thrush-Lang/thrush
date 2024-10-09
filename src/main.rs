@@ -5,7 +5,7 @@ mod frontend;
 mod logging;
 
 use {
-    backend::compiler::{Compiler, FileBuilder, Instruction, Linking, Options, OPT},
+    backend::compiler::{Compiler, FileBuilder, Instruction, Linking, Opt, Options},
     colored::{Colorize, CustomColor},
     frontend::{
         lexer::{Lexer, Token},
@@ -132,19 +132,19 @@ fn main() {
                         }
                         "--optimization" | "-opt" => match parameters[i + 1].as_str() {
                             "none" => {
-                                options.optimization = OPT::None;
+                                options.optimization = Opt::None;
                             }
                             "low" => {
-                                options.optimization = OPT::Low;
+                                options.optimization = Opt::Low;
                             }
                             "mid" => {
-                                options.optimization = OPT::Mid;
+                                options.optimization = Opt::Mid;
                             }
                             "mcqueen" => {
-                                options.optimization = OPT::Mcqueen;
+                                options.optimization = Opt::Mcqueen;
                             }
                             _ => {
-                                options.optimization = OPT::None;
+                                options.optimization = Opt::None;
                             }
                         },
 
@@ -267,10 +267,10 @@ fn main() {
                     module.set_triple(&options.target_triple);
 
                     let opt: OptimizationLevel = match &options.optimization {
-                        OPT::None => OptimizationLevel::None,
-                        OPT::Low => OptimizationLevel::Default,
-                        OPT::Mid => OptimizationLevel::Less,
-                        OPT::Mcqueen => OptimizationLevel::Aggressive,
+                        Opt::None => OptimizationLevel::None,
+                        Opt::Low => OptimizationLevel::Default,
+                        Opt::Mid => OptimizationLevel::Less,
+                        Opt::Mcqueen => OptimizationLevel::Aggressive,
                     };
 
                     let machine: TargetMachine = Target::from_triple(&options.target_triple)

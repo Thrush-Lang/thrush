@@ -41,11 +41,10 @@ impl Diagnostic {
             | ThrushErrorKind::VariableNotDefined,
             title,
             help,
-            span,
             line,
         ) = error
         {
-            self.print_report(title, help, *span, *line);
+            self.print_report(title, help, *line);
         } else if let ThrushError::Lex(
             ThrushErrorKind::SyntaxError
             | ThrushErrorKind::ParsedNumber
@@ -53,29 +52,39 @@ impl Diagnostic {
             | ThrushErrorKind::UnknownChar,
             title,
             help,
-            span,
             line,
         ) = error
         {
-            self.print_report(title, help, *span, *line);
+            self.print_report(title, help, *line);
+        } else if let ThrushError::Scope(
+            ThrushErrorKind::UnreachableVariable | ThrushErrorKind::VariableNotDefined,
+            title,
+            help,
+            line,
+        ) = error
+        {
+            self.print_report(title, help, *line);
         }
     }
 
-    fn print_report(&mut self, title: &str, help: &str, span: (usize, usize), line: usize) {
-        self.print_header(span, line, title);
+    fn print_report(&mut self, title: &str, help: &str, line: usize) {
+        self.print_header(line, title);
 
-        let line: &str = if line == self.lines.len() - 1 {
+        let content: &str = if line == self.lines.len() - 1 {
             self.lines.last().unwrap().trim()
         } else {
             self.lines[line - 1].trim()
         };
 
         self.buffer.push_str("  ");
-        self.buffer.push_str(&format!("{}\n", line));
+        self.drawer.push_str(&format!("{} | ", line));
+        self.buffer.push_str(&format!("{}\n", content));
 
-        for _ in 0..line.len() + 4 {
+        println!("|\n|");
+
+        for _ in 0..content.len() + 6 {
             self.drawer
-                .push_str("^".bold().bright_red().to_string().as_str());
+                .push_str("─".bold().bright_red().to_string().as_str());
         }
 
         self.buffer.push_str(&self.drawer);
@@ -93,19 +102,13 @@ impl Diagnostic {
         );
     }
 
-    fn print_header(&mut self, span: (usize, usize), line: usize, title: &str) {
+    fn print_header(&mut self, line: usize, title: &str) {
         println!(
-            "\n{} {}{}{}\n",
+            "\n{} {}\n",
             FILE_NAME_WITH_EXT.lock().unwrap().bold().bright_red(),
-            line,
-            ":".bold(),
-            format!("{}..{}", span.0, span.1).bold()
+            line
         );
 
-        println!(
-            "{} {}\n",
-            "ERROR:".bold().bright_red().underline(),
-            title.bold()
-        );
+        println!("{} {}\n", "ERROR".bold().bright_red().underline(), title);
     }
 }
