@@ -6,7 +6,6 @@ edition = "2021"
 
 [dependencies]
 ahash = "*"
-chrono = "*"
 colored = "*"
 llvmenv = "*"
 llvm-sys = { version = "180.0.0", features = ["force-static"] }

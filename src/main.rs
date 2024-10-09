@@ -23,8 +23,8 @@ use {
     std::{env, fs::read_to_string, path::Path, sync::Mutex},
 };
 
-pub static FILE_NAME_WITH_EXT: Mutex<String> = Mutex::new(String::new());
-pub static FILE_PATH: Mutex<String> = Mutex::new(String::new());
+pub static NAME: Mutex<String> = Mutex::new(String::new());
+pub static PATH: Mutex<String> = Mutex::new(String::new());
 
 fn main() {
     let mut parameters: Vec<String> = env::args().collect();
@@ -202,7 +202,7 @@ fn main() {
                     }
                 }
 
-                FILE_NAME_WITH_EXT.lock().unwrap().push_str(
+                NAME.lock().unwrap().push_str(
                     Path::new(&parameters[index])
                         .file_name()
                         .unwrap()
@@ -210,7 +210,7 @@ fn main() {
                         .unwrap(),
                 );
 
-                FILE_PATH.lock().unwrap().push_str(&parameters[index]);
+                PATH.lock().unwrap().push_str(&parameters[index]);
 
                 options.path = Path::new(&parameters[index]).to_path_buf();
 
@@ -228,7 +228,7 @@ fn main() {
         }
     }
 
-    match FILE_NAME_WITH_EXT.lock().unwrap().as_str() == "main.th" {
+    match NAME.lock().unwrap().as_str() == "main.th" {
         true => {
             options.is_main = true;
         }
@@ -252,6 +252,14 @@ fn main() {
     let context: Context = Context::create();
     let builder: Builder<'_> = context.create_builder();
     let module: Module<'_> = context.create_module(&options.name);
+
+    println!(
+        "\n{} {}",
+        "Compiling"
+            .custom_color(CustomColor::new(141, 141, 142))
+            .bold(),
+        PATH.lock().unwrap()
+    );
 
     let tokens: Result<&[Token], String> = lexer.lex();
 
@@ -289,11 +297,19 @@ fn main() {
 
                     Compiler::compile(&module, &builder, &context, instructions);
 
-                    if !compile {
+                    if compile {
+                        FileBuilder::new(&options, &module).build();
+                    } else {
                         todo!()
                     }
 
-                    FileBuilder::new(&options, &module).build();
+                    println!(
+                        "  {} {}",
+                        "Finished"
+                            .custom_color(CustomColor::new(141, 141, 142))
+                            .bold(),
+                        PATH.lock().unwrap()
+                    );
                 }
 
                 Err(msg) => {

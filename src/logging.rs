@@ -1,4 +1,4 @@
-use {chrono::Local, colored::Colorize};
+use colored::Colorize;
 
 pub enum LogType {
     INFO,
@@ -19,12 +19,5 @@ impl LogType {
 /// Logs a message to the compiler standard output (CSO)
 #[inline]
 pub fn log(ltype: LogType, msg: &str) {
-    println!(
-        "- {} - {}{}{} {}",
-        Local::now().format("%H:%M:%S").to_string().bold(),
-        "[".bold(),
-        ltype.to_str().bold().bright_red(),
-        "]".bold(),
-        msg.bold()
-    );
+    println!("{} {}", ltype.to_str().bold().bright_red(), msg.bold());
 }

@@ -1414,7 +1414,6 @@ name = "thrushc"
 version = "1.0.0"
 dependencies = [
  "ahash",
- "chrono",
  "colored",
  "inkwell",
  "llvm-sys",

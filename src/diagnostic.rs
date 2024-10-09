@@ -1,7 +1,7 @@
 use {
     super::{
         error::{ThrushError, ThrushErrorKind},
-        FILE_NAME_WITH_EXT,
+        NAME,
     },
     colored::Colorize,
     std::{
@@ -18,7 +18,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    pub fn new(path: String) -> Self {
+    pub fn new(path: &str) -> Self {
         let file: File = File::open(path).unwrap();
         let lines: Vec<String> = BufReader::new(file)
             .lines()
@@ -103,11 +103,7 @@ impl Diagnostic {
     }
 
     fn print_header(&mut self, line: usize, title: &str) {
-        println!(
-            "\n{} {}\n",
-            FILE_NAME_WITH_EXT.lock().unwrap().bold().bright_red(),
-            line
-        );
+        println!("\n{} {}\n", NAME.lock().unwrap().bold().bright_red(), line);
 
         println!("{} {}\n", "ERROR".bold().bright_red().underline(), title);
     }

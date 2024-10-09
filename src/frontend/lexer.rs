@@ -2,19 +2,15 @@ use {
     super::super::{
         diagnostic::Diagnostic,
         error::{ThrushError, ThrushErrorKind},
-        FILE_PATH
+        PATH
     },
     core::str,
     std::num::ParseFloatError,
 };
 
-pub type TokenSpan = (usize, usize);
-
 pub struct Lexer<'a> {
     tokens: Vec<Token>,
     code: &'a [u8],
-    token_start: usize,
-    token_end: usize,
     start: usize,
     current: usize,
     line: usize,
@@ -27,13 +23,11 @@ impl<'a> Lexer<'a> {
         Self {
             tokens: Vec::new(),
             code,
-            token_start: 0,
-            token_end: 0,
             start: 0,
             current: 0,
             line: 1,
             errors: Vec::with_capacity(50),
-            diagnostics: Diagnostic::new(FILE_PATH.lock().unwrap().to_string())
+            diagnostics: Diagnostic::new(&PATH.lock().unwrap())
         }
     }
 
