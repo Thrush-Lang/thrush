@@ -1,4 +1,8 @@
+<img src= "https://github.com/thrustlang/.github/blob/main/assets/logos/new%20logo/thrustlang-logo-banner-text-italic.png" alt= "logo" style= "width: 80%; height: 80%;"></img>
+
 # Syntax Highlighting
+
+<img src= "https://github.com/thrustlang/.github/blob/main/assets/standard-text-separator.png" alt= "standard-separator" style= "width: 1hv;"> </img>
 
 Thrust Programming Language includes syntax highlighting support for VS Code and Neovim/Vim, including editor integration, file icons, and optional themes.
 
@@ -6,7 +10,7 @@ Thrust Programming Language includes syntax highlighting support for VS Code and
 
 Install the extension from the generated VSIX package:
 
-```bash
+```console
 code --install-extension highlighting/vscode/thrustlang-highlighting-0.2.1.vsix
 ```
 
@@ -22,7 +26,7 @@ highlighting/neovim/thrust.nvim/
 
 Copy the plugin folders into your Neovim configuration:
 
-```bash
+```console
 cp -r highlighting/neovim/thrust.nvim/ftdetect ~/.config/nvim/
 cp -r highlighting/neovim/thrust.nvim/ftplugin ~/.config/nvim/
 cp -r highlighting/neovim/thrust.nvim/syntax ~/.config/nvim/
@@ -33,7 +37,7 @@ Open any `.thrust` file and highlighting will be enabled automatically.
 
 To use the included Gruvbox Dark Hard theme:
 
-```vim
+```console
 :colorscheme thrust-gruvbox-dark-hard
 ```
 
