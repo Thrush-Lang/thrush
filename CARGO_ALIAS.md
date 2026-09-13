@@ -169,12 +169,12 @@ The first two are equivalent to `cargo fuzz-continuous run <target> --mode stabl
 
 ## Rust Code Documentation
 
-It compiles and generate the standard rust code documentation along thrustc's codebase.
+It compiles and generates the standard Rust code documentation for thrustc workspace crates, excluding the vendored LLVM crates.
 ```console
 cargo docs
 ```
 
-It compiles, generate and open on the browser, the standard rust code documentation along thrustc's codebase.
+It compiles, generates, and opens in the browser the standard Rust code documentation for thrustc workspace crates, excluding the vendored LLVM crates.
 ```console
 cargo docs-open
 ```

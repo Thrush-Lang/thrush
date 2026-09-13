@@ -32,7 +32,4 @@ For example:
 
 These are some examples of diagnostics that you can find in Thrust and that will be useful when using the language.
 
-In the future, you'll be able to understand it better using `thrustc --explain W0004` or `thrustc --explain E0007`, which will explain in detail why this issue exists in the code.
-
-However, at the time of writing, it is not fully implemented for production.
-
+You can understand a diagnostic better using `thrustc --explain W0004` or `thrustc --explain E0007`, which explains in detail why the issue exists in the code when an explanation is available.

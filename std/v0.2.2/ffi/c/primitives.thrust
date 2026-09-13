@@ -1,0 +1,56 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+type c_Char @public = s8;
+type c_SignedChar @public = s8;
+type c_UnsignedChar @public = u8;
+
+type c_Short @public = s16;
+type c_UnsignedShort @public = u16;
+
+type c_Int @public = s32;
+type c_UnsignedInt @public = u32;
+
+type c_Long @public = s64;
+type c_UnsignedLong @public = u64;
+
+type c_LongLong @public = s64;
+type c_UnsignedLongLong @public = u64;
+
+type c_Int8 @public = s8;
+type c_Uint8 @public = u8;
+type c_Int16 @public = s16;
+type c_Uint16 @public = u16;
+type c_Int32 @public = s32;
+type c_Uint32 @public = u32;
+type c_Int64 @public = s64;
+type c_Uint64 @public = u64;
+
+type c_Float @public = f32;
+type c_Double @public = f64;
+type c_LongDouble @public = f80;
+
+type c_Bool @public = bool;
+
+type c_SizeT @public = usize;
+type c_SsizeT @public = ssize;
+type c_PtrdiffT @public = ssize;
+type c_WcharT @public = s32;
+type c_IntPtrT @public = ssize;
+type c_UintPtrT @public = usize;

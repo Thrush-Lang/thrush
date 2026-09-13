@@ -1,0 +1,250 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+import std::ffi::c::io as c;
+
+type File = ptr;
+
+const EOF: s32 @public @extern("EOF") = -1;
+
+const SEEK_SET: s32 @public @extern("SEEK_SET") = 0;
+const SEEK_CUR: s32 @public @extern("SEEK_CUR") = 1;
+const SEEK_END: s32 @public @extern("SEEK_END") = 2;
+
+const BUFSIZ: usize @public @extern("BUFSIZ") = 8192;
+
+const IOFBF: s32 @public @extern("IOFBF") = 0;
+const IOLBF: s32 @public @extern("IOLBF") = 1;
+const IONBF: s32 @public @extern("IONBF") = 2;
+
+static mut stdin: File @public @extern("stdin");
+static mut stdout: File @public @extern("stdout");
+static mut stderr: File @public @extern("stderr");
+
+fn print(fmt: CString) s32 @public @arbitraryArgs {
+    return c::vprintf(fmt, arbitraryArgs());
+}
+
+fn printTo(stream: File, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vfprintf(stream, fmt, arbitraryArgs());
+}
+
+fn printToBuffer(buffer: ptr, size: usize, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vsnprintf(buffer, size, fmt, arbitraryArgs());
+}
+
+fn scan(fmt: CString) s32 @public @arbitraryArgs {
+    return c::vscanf(fmt, arbitraryArgs());
+}
+
+fn scanFrom(stream: File, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vfscanf(stream, fmt, arbitraryArgs());
+}
+
+fn scanFromString(text: CString, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vsscanf(text, fmt, arbitraryArgs());
+}
+
+fn println(text: CString) s32 @public {
+    return c::puts(text);
+}
+
+fn printError(text: CString) void @public {
+    c::perror(text);
+}
+
+fn openFile(path: CString, mode: CString) File @public {
+    return c::fopen(path, mode);
+}
+
+fn reopenFile(path: CString, mode: CString, stream: File) File @public {
+    return c::freopen(path, mode, stream);
+}
+
+fn closeFile(stream: File) s32 @public {
+    return c::fclose(stream);
+}
+
+fn flush(stream: File) s32 @public {
+    return c::fflush(stream);
+}
+
+fn readBytes(buffer: ptr, size: usize, count: usize, stream: File) usize @public {
+    return c::fread(buffer, size, count, stream);
+}
+
+fn writeBytes(buffer: ptr, size: usize, count: usize, stream: File) usize @public {
+    return c::fwrite(buffer, size, count, stream);
+}
+
+fn seek(stream: File, offset: s64, whence: s32) s32 @public {
+    return c::fseek(stream, offset, whence);
+}
+
+fn tell(stream: File) s64 @public {
+    return c::ftell(stream);
+}
+
+fn rewindStream(stream: File) void @public {
+    c::rewind(stream);
+}
+
+fn getStreamPosition(stream: File, position: ptr) s32 @public {
+    return c::fgetpos(stream, position);
+}
+
+fn setStreamPosition(stream: File, position: ptr) s32 @public {
+    return c::fsetpos(stream, position);
+}
+
+fn atEndOfStream(stream: File) s32 @public {
+    return c::feof(stream);
+}
+
+fn streamHasError(stream: File) s32 @public {
+    return c::ferror(stream);
+}
+
+fn clearStreamError(stream: File) void @public {
+    c::clearerr(stream);
+}
+
+fn streamFileDescriptor(stream: File) s32 @public {
+    return c::fileno(stream);
+}
+
+fn openFileDescriptor(fd: s32, mode: CString) File @public {
+    return c::fdopen(fd, mode);
+}
+
+fn readCharFrom(stream: File) s32 @public {
+    return c::fgetc(stream);
+}
+
+fn readChar() s32 @public {
+    return c::getchar();
+}
+
+fn writeCharTo(character: s32, stream: File) s32 @public {
+    return c::fputc(character, stream);
+}
+
+fn writeChar(character: s32) s32 @public {
+    return c::putchar(character);
+}
+
+fn pushBackChar(character: s32, stream: File) s32 @public {
+    return c::ungetc(character, stream);
+}
+
+fn readLine(buffer: ptr, size: s32, stream: File) ptr @public {
+    return c::fgets(buffer, size, stream);
+}
+
+fn writeLineTo(text: CString, stream: File) s32 @public {
+    return c::fputs(text, stream);
+}
+
+fn deleteFile(path: CString) s32 @public {
+    return c::remove(path);
+}
+
+fn moveFile(from: CString, to: CString) s32 @public {
+    return c::rename(from, to);
+}
+
+fn setStreamBuffer(stream: File, buffer: ptr, mode: s32, size: usize) s32 @public {
+    return c::setvbuf(stream, buffer, mode, size);
+}
+
+fn setBuffer(stream: File, buffer: ptr) void @public {
+    c::setbuf(stream, buffer);
+}
+
+fn setBufferSize(stream: File, buffer: ptr, size: usize) void @public {
+    c::setbuffer(stream, buffer, size);
+}
+
+fn setLineBuffer(stream: File) void @public {
+    c::setlinebuf(stream);
+}
+
+fn readCharFast(stream: File) s32 @public {
+    return c::getc(stream);
+}
+
+fn writeCharFast(character: s32, stream: File) s32 @public {
+    return c::putc(character, stream);
+}
+
+fn printToBufferUnsafe(buffer: ptr, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vsprintf(buffer, fmt, arbitraryArgs());
+}
+
+fn openTempFile() File @public {
+    return c::tmpfile();
+}
+
+fn seekOffset(stream: File, offset: s64, whence: s32) s32 @public {
+    return c::fseeko(stream, offset, whence);
+}
+
+fn tellOffset(stream: File) s64 @public {
+    return c::ftello(stream);
+}
+
+fn readLineAllocated(lineptr: ptr, size: ptr[usize], stream: File) s64 @public {
+    return c::getline(lineptr, size, stream);
+}
+
+fn openPipe(command: CString, mode: CString) File @public {
+    return c::popen(command, mode);
+}
+
+fn closePipe(stream: File) s32 @public {
+    return c::pclose(stream);
+}
+
+fn printToFileDescriptor(fd: s32, fmt: CString) s32 @public @arbitraryArgs {
+    return c::vdprintf(fd, fmt, arbitraryArgs());
+}
+
+fn lockStream(stream: File) void @public {
+    c::flockfile(stream);
+}
+
+fn tryLockStream(stream: File) s32 @public {
+    return c::ftrylockfile(stream);
+}
+
+fn unlockStream(stream: File) void @public {
+    c::funlockfile(stream);
+}
+
+fn renameAt(oldDirFd: s32, oldPath: CString, newDirFd: s32, newPath: CString) s32 @public {
+    return c::renameat(oldDirFd, oldPath, newDirFd, newPath);
+}
+
+fn renameAt2(oldDirFd: s32, oldPath: CString, newDirFd: s32, newPath: CString, flags: u32) s32 @public {
+    return c::renameat2(oldDirFd, oldPath, newDirFd, newPath, flags);
+}
+
+fn closeAllFiles() s32 @public {
+    return c::fcloseall();
+}

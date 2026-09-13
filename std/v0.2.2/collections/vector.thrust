@@ -1,0 +1,194 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+directive "--disable-warnings=W0020";
+
+import std::mem;
+
+const INITIAL_CAPACITY: usize @public = 4;
+
+struct Vector [T] @public {
+    data: ptr[T],
+    length: usize,
+    capacity: usize
+}
+
+fn newVector [T] () Vector[T] @public {
+    return new Vector[T] {
+        data: nullptr,
+        length: 0,
+        capacity: 0
+    };
+}
+
+fn withCapacity [T] (capacity: usize) Vector[T] @public {
+    var vector := new Vector[T] {
+        data: nullptr,
+        length: 0,
+        capacity: 0
+    };
+
+    if capacity > 0 {
+        vector->data = (mem::allocateMemory(sizeOf(T) * capacity)) as ptr[T];
+        vector->capacity = capacity;
+    }
+
+    return vector;
+}
+
+fn destroyVector [T] (vector: ptr[Vector[T]]) void @public {
+    if vector->data != nullptr {
+        mem::freeMemory(vector->data as ptr);
+    }
+
+    vector->data = nullptr;
+    vector->length = 0;
+    vector->capacity = 0;
+}
+
+fn getLength [T] (vector: ptr[Vector[T]]) usize @public {
+    return vector->length;
+}
+
+fn getCapacity [T] (vector: ptr[Vector[T]]) usize @public {
+    return vector->capacity;
+}
+
+fn isEmpty [T] (vector: ptr[Vector[T]]) bool @public {
+    return vector->length == 0;
+}
+
+fn getDataPointer [T] (vector: ptr[Vector[T]]) ptr[T] @public {
+    return vector->data;
+}
+
+fn at [T] (vector: ptr[Vector[T]], index: usize) T @public {
+    return vector->data->[index];
+}
+
+fn front [T] (vector: ptr[Vector[T]]) T @public {
+    return vector->data->[0];
+}
+
+fn back [T] (vector: ptr[Vector[T]]) T @public {
+    return vector->data->[vector->length - 1];
+}
+
+fn ensureCapacity [T] (vector: ptr[Vector[T]], minimum: usize) void @public {
+    if minimum > vector->capacity {
+        var newCapacity: usize = vector->capacity;
+
+        if newCapacity == 0 {
+            newCapacity = INITIAL_CAPACITY;
+        }
+
+        while newCapacity < minimum {
+            newCapacity = newCapacity * 2;
+        }
+
+        vector->data = (mem::reallocateMemory(vector->data as ptr, sizeOf(T) * newCapacity)) as ptr[T];
+        vector->capacity = newCapacity;
+    }
+}
+
+fn pushBack [T] (vector: ptr[Vector[T]], value: T) void @public {
+    if vector->length == vector->capacity {
+        if vector->capacity == 0 {
+            ensureCapacity(vector, INITIAL_CAPACITY);
+        } else {
+            ensureCapacity(vector, vector->capacity * 2);
+        }
+    }
+
+    vector->data[vector->length] = value;
+    vector->length = vector->length + 1;
+}
+
+fn popBack [T] (vector: ptr[Vector[T]]) T @public {
+    vector->length = vector->length - 1;
+
+    return vector->data->[vector->length];
+}
+
+fn insertAt [T] (vector: ptr[Vector[T]], index: usize, value: T) void @public {
+    if vector->length == vector->capacity {
+        if vector->capacity == 0 {
+            ensureCapacity(vector, INITIAL_CAPACITY);
+        } else {
+            ensureCapacity(vector, vector->capacity * 2);
+        }
+    }
+
+    var i: usize = vector->length;
+
+    while i > index {
+        vector->data[i] = vector->data->[i - 1];
+        i = i - 1;
+    }
+
+    vector->data[index] = value;
+    vector->length = vector->length + 1;
+}
+
+fn removeAt [T] (vector: ptr[Vector[T]], index: usize) T @public {
+    var value: T = vector->data->[index];
+
+    var i: usize = index;
+
+    while i + 1 < vector->length {
+        vector->data[i] = vector->data->[i + 1];
+        i = i + 1;
+    }
+
+    vector->length = vector->length - 1;
+
+    return value;
+}
+
+fn clear [T] (vector: ptr[Vector[T]]) void @public {
+    vector->length = 0;
+}
+
+fn reserveCapacity [T] (vector: ptr[Vector[T]], newCapacity: usize) void @public {
+    if newCapacity > vector->capacity {
+        vector->data = (mem::reallocateMemory(vector->data as ptr, sizeOf(T) * newCapacity)) as ptr[T];
+        vector->capacity = newCapacity;
+    }
+}
+
+fn shrinkToFit [T] (vector: ptr[Vector[T]]) void @public {
+    if vector->length == 0 {
+        if vector->data != nullptr {
+            mem::freeMemory(vector->data as ptr);
+        }
+
+        vector->data = nullptr;
+        vector->capacity = 0;
+    } else if vector->length < vector->capacity {
+        vector->data = (mem::reallocateMemory(vector->data as ptr, sizeOf(T) * vector->length)) as ptr[T];
+        vector->capacity = vector->length;
+    }
+}
+
+fn swapElements [T] (vector: ptr[Vector[T]], first: usize, second: usize) void @public {
+    var temp: T = vector->data->[first];
+
+    vector->data[first] = vector->data->[second];
+    vector->data[second] = temp;
+}

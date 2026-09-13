@@ -180,7 +180,7 @@ The frontend uses a **handwritten recursive descent parser**. The backend perfor
   Standard library crate. Embeds the `std/` directory (Thrust source files and version metadata) via `include_dir!`, and manages installation into the user's home directory (`~/.thrustlang/std` on Unix, `%APPDATA%\.thrustlang\std` on Windows). Performs version-aware resolution (`resolve_target_version`, `ensure_std_present`, `validate_version`) and dumps the requested version's sources if missing.
 
 - **`std/`**  
-  Versioned standard library sources: `VERSION.txt` (current version history) and `v0.1.8/` with `debug.thrust`, `io.thrust`, and `math.thrust`. Consumed by `thrustc_std` and the preprocessor's standard library resolver.
+  Versioned standard library sources. `VERSION.txt` lists the available versions, and each `v*/` directory contains modules such as `io.thrust`, `math.thrust`, `mem.thrust`, `collections/vector.thrust`, and C FFI helpers. Consumed by `thrustc_std` and the preprocessor's standard library resolver.
 
 ---
 
@@ -193,7 +193,7 @@ Vendored forks of LLVM Rust bindings, patched for thrustc compatibility:
 - **`crates/llvm/inkwell`** — Safe Rust wrappers over `llvm-sys` with additional context and builder abstractions.
 - **`crates/llvm/clang`** — Safe Rust wrappers over `clang-sys`.
 
-These are patched via `[patch.crates-io]` in the workspace `Cargo.toml` and referenced as workspace dependencies.
+`clang-sys` and `llvm-sys` are patched via `[patch.crates-io]` in the workspace `Cargo.toml`; `inkwell` and `clang` are referenced as workspace path dependencies.
 
 ---
 
@@ -231,12 +231,12 @@ GitHub Actions workflows for four target platforms:
 
 | Platform | Dev | Release |
 |---|---|---|
-| `x86_64-linux-ubuntu` | ✅ | ✅ |
-| `x86_64-macos` | ✅ | ✅ |
-| `aarch64-macos` | ✅ | ✅ |
-| `x86_64-windows-msvc` | ✅ | ✅ |
+| `x86_64-linux-ubuntu` | Yes | Yes |
+| `x86_64-macos` | Yes | Yes |
+| `aarch64-macos` | Yes | Yes |
+| `x86_64-windows-msvc` | Yes | Yes |
 
-Builds, tests, and publishes release binaries for each platform.
+Builds and publishes release binaries for each platform.
 
 ---
 
@@ -244,9 +244,10 @@ Builds, tests, and publishes release binaries for each platform.
 
 Cross-platform automation scripts (available as `.sh`, `.bat`, `.ps1`, `.fish`):
 
-- **`cargo-dependencies.*`** — Setup cargo dependencies and LLVM.
+- **`cargo-dependencies.*`** — Install project cargo tools (`sccache`, `panic-analyzer`, `git-cliff`).
 - **`deploy-code-docs.*`** — Deploy compiler documentation.
 - **`deploy-version.*`** — Version deployment automation.
+- **`embed-std.*`** — Embed standard library sources.
 - **`license_updater.py`** — Automated license header updates across source files.
 - **`release-changelog.*`** — Generate and deploy changelogs for releases.
 - **`tag-manager.*`** — Git tag management helpers.
@@ -255,7 +256,7 @@ Cross-platform automation scripts (available as `.sh`, `.bat`, `.ps1`, `.fish`):
 
 ## Changelogs (`changelogs/`)
 
-Per-platform changelogs for each release version (v0.1.0 through v0.1.8):
+Per-platform changelogs for release versions:
 
 - `thrustc-x86_64-linux-ubuntu-v*`
 - `thrustc-x86_64-macos-v*`

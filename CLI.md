@@ -54,6 +54,8 @@ Compiler flags:
 • -jit-args ["--foo;bar"] Specifies the arguments passed to the program executed via the JIT compiler. Arguments are separated by spaces or semicolons.
 • -abi [system-v|nvidia-cuda|webassembly] Configure the use of a specific ABI (Application Binary Interface) for code generation. This can affect how functions are called, how data is passed, and how the generated code interacts with other libraries and system components.
 • -mode [stable|unstable] Enable or disable compiler features to limit to stable features only or add support to unstable features.
+• -std [path/to/std] Set the standard library root path.
+• -std-version [x.x.x] Set the standard library version to use.
 • -dbg Enable generation of debug information (DWARF).
 • -dbg-for-inlining Enable debug information specifically optimized for inlined functions.
 • -dbg-for-profiling Emit extra debug info to support source-level profiling tools.
@@ -78,7 +80,7 @@ Disable compiler flags:
 • --disable-rtlib-got It omits the runtime library dependency on the Global Offset Table (GOT), essential when generating non-Position Independent Code (PIC) with ARM.
 • --disable-safe-trapping-math It allow trapping math operations that can cause exceptions. Useful for floating-point operations.
 • --disable-safe-math Disable safe math for integer operations (allows overflow and undefined behavior).
-• --disable-default-optimization It omits default optimization that occurs even without specified optimization.
+• --disable-default-optimizations It omits default optimization that occurs even without specified optimization.
 • --disable-all-sanitizers Disable all sanitizers.
 • --disable-all-cpu-features Disable the all CPU features.
 

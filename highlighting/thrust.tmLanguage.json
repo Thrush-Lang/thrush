@@ -16,55 +16,58 @@
     { "include": "#builtins" },
     { "include": "#constants" },
     { "include": "#function-def" },
+    { "include": "#type-def" },
     { "include": "#function-call" },
     { "include": "#operators" },
     { "include": "#punctuation" }
   ],
   "repository": {
-
     "block-comment": {
       "name": "comment.block.thrust",
       "begin": "/\\*",
       "end": "\\*/"
     },
-
     "line-comment": {
       "name": "comment.line.double-slash.thrust",
       "match": "//.*$"
     },
-
     "attributes": {
-      "patterns": [
-        {
-          "comment": "Attributes with parenthesized argument",
-          "name": "entity.other.attribute-name.thrust",
-          "match": "@(?:asmAlignStack|asmSyntax|asmThrowErrors|asmSideEffects|align|optFuzzing|noUnwind|noReturn|packed|heap|public|linkage|extern|arbitraryArgs|hot|minSize|alwaysInline|noInline|inline|safeStack|weakStack|strongStack|preciseFloatingPoint|convention|pure|thunk|cuda|constructor|destructor|if|elif|else|promote)\\b"
-        }
-      ]
+      "name": "entity.other.attribute-name.thrust",
+      "match": "@(?:align|optFuzzing|noUnwind|noReturn|packed|heap|public|entrypoint|linkage|extern|arbitraryArgs|hot|minSize|alwaysInline|noInline|inline|safeStack|weakStack|strongStack|preciseFloatingPoint|convention|pure|thunk|cuda|constructor|destructor|if|elif|else|promote|asmAlignStack|asmSyntax|asmThrowErrors|asmSideEffects)\\b"
     },
-
     "strings": {
-      "name": "string.quoted.double.thrust",
-      "begin": "\"",
-      "end": "\"",
       "patterns": [
         {
-          "name": "constant.character.escape.thrust",
-          "match": "\\\\(?:[nrtf0\\\\\"'\\\\]|x[0-9a-fA-F]{2})"
+          "name": "string.quoted.double.non-null-terminated.thrust",
+          "begin": "n#\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
+        },
+        {
+          "name": "string.quoted.double.thrust",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            { "include": "#string-escapes" }
+          ]
         }
       ]
     },
-
+    "string-escapes": {
+      "name": "constant.character.escape.thrust",
+      "match": "\\\\(?:[ntr0\\\\\"'])"
+    },
     "char-literal": {
       "name": "string.quoted.single.thrust",
-      "match": "'(?:[^'\\\\]|\\\\.)'"
+      "match": "'(?:[^'\\\\]|\\\\[ntr0\\\\\"'])'"
     },
-
     "numbers": {
       "patterns": [
         {
           "name": "constant.numeric.float.thrust",
-          "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*(?:[eE][+-]?[0-9]+)?\\b"
+          "match": "\\b[0-9][0-9_]*\\.[0-9][0-9_]*\\b"
         },
         {
           "name": "constant.numeric.hex.thrust",
@@ -75,12 +78,15 @@
           "match": "\\b0b[01][01_]*\\b"
         },
         {
+          "name": "constant.numeric.octal.thrust",
+          "match": "\\b0o[0-7][0-7_]*\\b"
+        },
+        {
           "name": "constant.numeric.integer.thrust",
           "match": "\\b[0-9][0-9_]*\\b"
         }
       ]
     },
-
     "keywords": {
       "patterns": [
         {
@@ -89,10 +95,10 @@
         },
         {
           "name": "keyword.declaration.thrust",
-          "match": "\\b(fn|var|const|struct|enum|type|asmfn|intrinsic|embedded|import|importC|new|only)\\b"
+          "match": "\\b(fn|var|const|struct|enum|type|asmfn|intrinsic|embedded|import|importC|only|new|directive)\\b"
         },
         {
-          "name": "keyword.operator.thrust",
+          "name": "keyword.operator.word.thrust",
           "match": "\\b(as|deref|ref|address|addr|load|write|alloc|fixed|or|and)\\b"
         },
         {
@@ -105,46 +111,56 @@
         }
       ]
     },
-
     "atomic": {
       "name": "storage.modifier.thrust",
       "match": "\\b(volatile|lazyThread|atomicNone|atomicFree|atomicRelax|atomicGrab|atomicDrop|atomicSync|atomicStrict|threadInit|threadDyn|threadExec|threadLDyn)\\b"
     },
-
     "types": {
       "name": "storage.type.thrust",
-      "match": "\\b(s8|s16|s32|s64|ssize|u8|u16|u32|u64|u128|usize|f32|f64|f128|f80|fppc_128|bool|char|ptr|array|void|Fn|CString)\\b"
+      "match": "\\b(s8|s16|s32|s64|ssize|u8|u16|u32|u64|u128|usize|f32|f64|f128|f80|fppc_128|bool|char|ptr|array|void|Fn|CString|CNString)\\b"
     },
-
     "builtins": {
       "name": "support.function.builtin.thrust",
-      "match": "\\b(halloc|sizeOf|memset|memmove|memcpy|alignOf|abiSizeOf|bitSizeOf|abiAlignOf|arbitraryArg|arbitraryArgs|staticAssert|compileError|compileWarning|file|fileLine|currentFuncName|isSigned|isUnsigned|isInteger|isFloat|isBool|isChar|isPointer|isArray|isFixedArray|isStruct|isVoid|isConst|isNumeric|isFunction|typeWidth|fieldCount|fixedArraySize|isSameType|isPtrLike|isFixedArrayOfSize|compilerVersion|debugBuild|stringLength|targetOS|targetArch|targetVendor|targetAbi|targetTriple|isLinux|isWindows|isDarwin|isApple|isAix|is64Bit|is32Bit|isBigEndian|isLittleEndian|isX86|isX8664|isArm|isAarch64|isRiscv64|isPpc|isPpc64|isMips64|isSystemz|isLoongarch64|isWasm|isElf|isMachO|isCoff|hasPosixThreads|hasSysvAbi)\\b\\s*(?=\\()"
+      "match": "\\b(halloc|memset|memmove|memcpy|abiSizeOf|bitSizeOf|abiAlignOf|arbitraryArg|arbitraryArgs|alignOf|sizeOf|staticAssert|compileError|compileWarning|file|fileLine|currentFuncName|isSigned|isUnsigned|isInteger|isFloat|isBool|isChar|isPointer|isArray|isFixedArray|isStruct|isVoid|isConst|isNumeric|isFunction|typeWidth|fieldCount|fixedArraySize|isSameType|isPtrLike|isFixedArrayOfSize|compilerVersion|debugBuild|stringLength|targetOS|targetArch|targetVendor|targetAbi|targetTriple|isLinux|isWindows|isDarwin|isApple|isAix|is64Bit|is32Bit|isBigEndian|isLittleEndian|isX86|isX8664|isArm|isAarch64|isRiscv64|isPpc|isPpc64|isMips64|isSystemz|isLoongarch64|isWasm|isElf|isMachO|isCoff|hasPosixThreads|hasSysvAbi|pointerWidth|isizeWidth|usizeWidth|pointerAlign|maxAlignment|targetCPU|targetCpuFeatures|hasFeature|hostOsName|hostArch|hostEndian|currentTimestamp)\\b\\s*(?=\\()"
     },
-
     "constants": {
       "name": "variable.other.constant.thrust",
       "match": "\\b[A-Z][A-Z0-9_]{1,}\\b"
     },
-
     "function-def": {
-      "comment": "fn name(...) — highlight function name at definition",
-      "match": "\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
+      "match": "\\b(fn|asmfn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
       "captures": {
         "1": { "name": "keyword.declaration.thrust" },
         "2": { "name": "entity.name.function.thrust" }
       }
     },
-
+    "type-def": {
+      "patterns": [
+        {
+          "match": "\\b(struct|enum|type)\\s+([a-zA-Z_][a-zA-Z0-9_]*)",
+          "captures": {
+            "1": { "name": "keyword.declaration.thrust" },
+            "2": { "name": "entity.name.type.thrust" }
+          }
+        }
+      ]
+    },
     "function-call": {
-      "comment": "name(...) — highlight function calls",
       "match": "\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*(?=\\()",
       "captures": {
         "1": { "name": "entity.name.function.call.thrust" }
       }
     },
-
     "operators": {
       "patterns": [
+        {
+          "name": "keyword.operator.range.thrust",
+          "match": "\\.\\.\\.|\\.\\."
+        },
+        {
+          "name": "keyword.operator.arrow.thrust",
+          "match": "->|=>"
+        },
         {
           "name": "keyword.operator.assignment.compound.thrust",
           "match": "\\+=|-=|\\*=|/=|%=|<<=|>>=|&=|\\|=|\\^="
@@ -175,7 +191,6 @@
         }
       ]
     },
-
     "punctuation": {
       "patterns": [
         {

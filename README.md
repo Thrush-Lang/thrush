@@ -21,8 +21,8 @@ Supported operating systems and architectures:
 
 - Linux x64 (GNU)
 - Windows x64 (MSVC) 
-- MacOS x64 (arm/aarch64)
-- MacOS x64 (intel)
+- MacOS aarch64 (Apple Silicon)
+- MacOS x64 (Intel)
 
 ## From Scratch
 
@@ -90,7 +90,7 @@ scripts\cargo-dependencies.bat
 
 Now you need to have Rust installed with a recent version.
 
-- \>= [Rust](https://www.rust-lang.org/) (v1.18.5) 
+- \>= [Rust](https://www.rust-lang.org/) (v1.85.0)
 - Rust 2024 Edition
 
 Now you need to compile the compiler with Rust. 

@@ -1,0 +1,582 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+directive "--disable-warnings=W0020";
+directive "--disable-warnings=W0030";
+
+import std::collections::vector as vec;
+
+type UnicodeCodePoint @public = u32;
+
+struct TString @public {
+    buffer: vec::Vector[char]
+}
+
+fn newTString() TString @public {
+    return buildWithCapacity(0);
+}
+
+fn withCapacity(capacity: usize) TString @public {
+    return buildWithCapacity(capacity);
+}
+
+fn fromCString(text: CString) TString @public {
+    var length: usize = cstringLength(text);
+    return copyCStringRange(text, 0, length);
+}
+
+fn copy(text: ptr[TString]) TString @public {
+    return copyByteRange(text, 0, len(text));
+}
+
+fn toCString(text: ptr[TString]) CString @public {
+    return vec::getDataPointer[char](ref text.buffer) as const array[char];
+}
+
+fn destroyTString(text: ptr[TString]) void @public {
+    vec::destroyVector[char](ref text.buffer);
+}
+
+fn len(text: ptr[TString]) usize @public {
+    var length: usize = vec::getLength[char](ref text.buffer);
+
+    if length == 0 {
+        return 0;
+    }
+
+    return length - 1;
+}
+
+fn unicodeCodePointCount(text: ptr[TString]) usize @public {
+    var count: usize = 0;
+    var index: usize = 0;
+    var length: usize = len(text);
+    var codePoint: UnicodeCodePoint = 0;
+    var nextIndex: usize;
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    while index < length {
+        nextIndex = decodeNextData(data, length, index, ref codePoint);
+
+        if nextIndex == index {
+            return count;
+        }
+
+        count = count + 1;
+        index = nextIndex;
+    }
+
+    return count;
+}
+
+fn isEmpty(text: ptr[TString]) bool @public {
+    return len(text) == 0;
+}
+
+fn hasIndex(text: ptr[TString], index: usize) bool @public {
+    return index < len(text);
+}
+
+fn get(text: ptr[TString], index: usize) char @public {
+    if !hasIndex(text, index) {
+        return '\0';
+    }
+
+    return vec::getDataPointer[char](ref text.buffer)->[index];
+}
+
+fn capacity(text: ptr[TString]) usize @public {
+    var currentCapacity: usize = vec::getCapacity[char](ref text.buffer);
+
+    if currentCapacity == 0 {
+        return 0;
+    }
+
+    return currentCapacity - 1;
+}
+
+fn clear(text: ptr[TString]) void @public {
+    vec::clear[char](ref text.buffer);
+    pushNullTerminator(text);
+}
+
+fn reserve(text: ptr[TString], requestedCapacity: usize) void @public {
+    vec::reserveCapacity[char](ref text.buffer, requestedCapacity + 1);
+}
+
+fn appendCString(text: ptr[TString], value: CString) void @public {
+    var textLength: usize = len(text);
+    var length: usize = cstringLength(value);
+    var index: usize = 0;
+    var data: ptr[char] = value as ptr[char];
+
+    removeNullTerminator(text);
+    vec::reserveCapacity[char](ref text.buffer, textLength + length + 1);
+
+    while index < length {
+        appendByteUnchecked(text, data->[index]);
+        index = index + 1;
+    }
+
+    pushNullTerminator(text);
+}
+
+fn appendTString(text: ptr[TString], value: ptr[TString]) void @public {
+    var targetLength: usize = len(text);
+    var sourceLength: usize = len(value);
+    var index: usize = 0;
+    var data: ptr[char] = vec::getDataPointer[char](ref value.buffer);
+
+    removeNullTerminator(text);
+    vec::reserveCapacity[char](ref text.buffer, targetLength + sourceLength + 1);
+
+    while index < sourceLength {
+        appendByteUnchecked(text, data->[index]);
+        index = index + 1;
+    }
+
+    pushNullTerminator(text);
+}
+
+fn concat(left: ptr[TString], right: ptr[TString]) TString @public {
+    var result := copy(left);
+    appendTString(ref result, right);
+    return result;
+}
+
+fn trim(text: ptr[TString]) TString @public {
+    var start: usize = 0;
+    var end: usize = len(text);
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    while start < end && isASCIIWhitespace(data->[start]) {
+        start = start + 1;
+    }
+
+    while end > start && isASCIIWhitespace(data->[end - 1]) {
+        end = end - 1;
+    }
+
+    return copyByteRange(text, start, end);
+}
+
+fn trimStart(text: ptr[TString]) TString @public {
+    var start: usize = 0;
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    while start < len(text) && isASCIIWhitespace(data->[start]) {
+        start = start + 1;
+    }
+
+    return copyByteRange(text, start, len(text));
+}
+
+fn trimEnd(text: ptr[TString]) TString @public {
+    var end: usize = len(text);
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    while end > 0 && isASCIIWhitespace(data->[end - 1]) {
+        end = end - 1;
+    }
+
+    return copyByteRange(text, 0, end);
+}
+
+fn startsWith(text: ptr[TString], prefix: CString) bool @public {
+    var prefixLength: usize = cstringLength(prefix);
+    var index: usize = 0;
+    var prefixData: ptr[char] = prefix as ptr[char];
+    var textData: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    if prefixLength > len(text) {
+        return false;
+    }
+
+    while index < prefixLength {
+        if textData->[index] != prefixData->[index] {
+            return false;
+        }
+
+        index = index + 1;
+    }
+
+    return true;
+}
+
+fn endsWith(text: ptr[TString], suffix: CString) bool @public {
+    var suffixLength: usize = cstringLength(suffix);
+    var textLength: usize = len(text);
+    var index: usize = 0;
+    var suffixData: ptr[char] = suffix as ptr[char];
+    var textData: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+    var start: usize;
+
+    if suffixLength > textLength {
+        return false;
+    }
+
+    start = textLength - suffixLength;
+
+    while index < suffixLength {
+        if textData->[start + index] != suffixData->[index] {
+            return false;
+        }
+
+        index = index + 1;
+    }
+
+    return true;
+}
+
+fn contains(text: ptr[TString], value: CString) bool @public {
+    return indexOf(text, value) != len(text) || cstringLength(value) == 0;
+}
+
+fn indexOf(text: ptr[TString], value: CString) usize @public {
+    var valueLength: usize = cstringLength(value);
+    var textLength: usize = len(text);
+    var valueData: ptr[char] = value as ptr[char];
+    var textData: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+    var start: usize = 0;
+    var index: usize;
+    var matches: bool;
+
+    if valueLength == 0 {
+        return 0;
+    }
+
+    if valueLength > textLength {
+        return textLength;
+    }
+
+    while start + valueLength <= textLength {
+        index = 0;
+        matches = true;
+
+        while index < valueLength && matches {
+            if textData->[start + index] != valueData->[index] {
+                matches = false;
+            }
+
+            index = index + 1;
+        }
+
+        if matches {
+            return start;
+        }
+
+        start = start + 1;
+    }
+
+    return textLength;
+}
+
+fn equals(left: ptr[TString], right: ptr[TString]) bool @public {
+    var leftLength: usize = len(left);
+    var rightLength: usize = len(right);
+    var index: usize = 0;
+    var leftData: ptr[char] = vec::getDataPointer[char](ref left.buffer);
+    var rightData: ptr[char] = vec::getDataPointer[char](ref right.buffer);
+
+    if leftLength != rightLength {
+        return false;
+    }
+
+    while index < leftLength {
+        if leftData->[index] != rightData->[index] {
+            return false;
+        }
+
+        index = index + 1;
+    }
+
+    return true;
+}
+
+fn toUpperCaseASCII(text: ptr[TString]) TString @public {
+    var result := buildWithCapacity(len(text));
+    var index: usize = 0;
+    var byte: char;
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    removeNullTerminator(ref result);
+
+    while index < len(text) {
+        byte = data->[index];
+
+        if (byte as u8) >= ('a' as u8) && (byte as u8) <= ('z' as u8) {
+            appendByteUnchecked(ref result, ((byte as u8) - 32) as char);
+        } else {
+            appendByteUnchecked(ref result, byte);
+        }
+
+        index = index + 1;
+    }
+
+    pushNullTerminator(ref result);
+
+    return result;
+}
+
+fn toLowerCaseASCII(text: ptr[TString]) TString @public {
+    var result := buildWithCapacity(len(text));
+    var index: usize = 0;
+    var byte: char;
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    removeNullTerminator(ref result);
+
+    while index < len(text) {
+        byte = data->[index];
+
+        if (byte as u8) >= ('A' as u8) && (byte as u8) <= ('Z' as u8) {
+            appendByteUnchecked(ref result, ((byte as u8) + 32) as char);
+        } else {
+            appendByteUnchecked(ref result, byte);
+        }
+
+        index = index + 1;
+    }
+
+    pushNullTerminator(ref result);
+
+    return result;
+}
+
+fn isValidUTF8(text: CString) bool @public {
+    var length: usize = cstringLength(text);
+    var index: usize = 0;
+    var data: ptr[char] = text as ptr[char];
+    var codePoint: UnicodeCodePoint = 0;
+    var nextIndex: usize;
+
+    while index < length {
+        nextIndex = decodeNextData(data, length, index, ref codePoint);
+
+        if nextIndex == index {
+            return false;
+        }
+
+        index = nextIndex;
+    }
+
+    return true;
+}
+
+fn isCharBoundary(text: ptr[TString], index: usize) bool @public {
+    if index == 0 || index == len(text) {
+        return true;
+    }
+
+    if index > len(text) {
+        return false;
+    }
+
+    return !isUTF8ContinuationByte(vec::getDataPointer[char](ref text.buffer)->[index]);
+}
+
+fn decodeNext(text: ptr[TString], index: usize, outCodePoint: ptr[UnicodeCodePoint]) usize @public {
+    var length: usize = len(text);
+
+    if index >= length {
+        return index;
+    }
+
+    return decodeNextData(vec::getDataPointer[char](ref text.buffer), length, index, outCodePoint);
+}
+
+fn pushUnicodeCodePoint(text: ptr[TString], codePoint: UnicodeCodePoint) bool @public {
+    return appendUTF8Encoded(text, codePoint);
+}
+
+fn isASCIIWhitespace(value: char) bool {
+    return value == ' ' || value == '\n' || value == '\t' || value == '\r';
+}
+
+fn isUTF8ContinuationByte(value: char) bool {
+    return ((value as u8) & 0xC0) == 0x80;
+}
+
+fn cstringLength(text: CString) usize {
+    var index: usize = 0;
+    var data: ptr[char] = text as ptr[char];
+
+    while data->[index] != '\0' {
+        index = index + 1;
+    }
+
+    return index;
+}
+
+fn pushNullTerminator(text: ptr[TString]) void {
+    vec::pushBack[char](ref text.buffer, '\0');
+}
+
+fn removeNullTerminator(text: ptr[TString]) void {
+    if vec::getLength[char](ref text.buffer) > 0 {
+        vec::popBack[char](ref text.buffer);
+    }
+}
+
+fn appendByteUnchecked(text: ptr[TString], value: char) void {
+    vec::pushBack[char](ref text.buffer, value);
+}
+
+fn buildWithCapacity(capacity: usize) TString {
+    var text := new TString {
+        buffer: vec::withCapacity[char](capacity + 1)
+    };
+
+    pushNullTerminator(ref text);
+
+    return text;
+}
+
+fn copyCStringRange(text: CString, start: usize, end: usize) TString {
+    var result := buildWithCapacity(end - start);
+    var index: usize = start;
+    var data: ptr[char] = text as ptr[char];
+
+    removeNullTerminator(ref result);
+
+    while index < end {
+        appendByteUnchecked(ref result, data->[index]);
+        index = index + 1;
+    }
+
+    pushNullTerminator(ref result);
+
+    return result;
+}
+
+fn copyByteRange(text: ptr[TString], start: usize, end: usize) TString {
+    var result := buildWithCapacity(end - start);
+    var index: usize = start;
+    var data: ptr[char] = vec::getDataPointer[char](ref text.buffer);
+
+    removeNullTerminator(ref result);
+
+    while index < end {
+        appendByteUnchecked(ref result, data->[index]);
+        index = index + 1;
+    }
+
+    pushNullTerminator(ref result);
+
+    return result;
+}
+
+fn decodeNextData(data: ptr[char], length: usize, index: usize, outCodePoint: ptr[UnicodeCodePoint]) usize {
+    var nextIndex: usize = index;
+    var codePoint: UnicodeCodePoint = 0;
+
+    if index < length {
+        var first: u8 = data->[index] as u8;
+
+        if (first & 0x80) == 0 {
+            codePoint = first as UnicodeCodePoint;
+            nextIndex = index + 1;
+        } else if (first & 0xE0) == 0xC0 {
+            if index + 1 < length {
+                var second: u8 = data->[index + 1] as u8;
+
+                if isUTF8ContinuationByte(second as char) {
+                    codePoint = (((first & 0x1F) as UnicodeCodePoint) << 6) | ((second & 0x3F) as UnicodeCodePoint);
+
+                    if codePoint >= 0x80 {
+                        nextIndex = index + 2;
+                    }
+                }
+            }
+        } else if (first & 0xF0) == 0xE0 {
+            if index + 2 < length {
+                var second: u8 = data->[index + 1] as u8;
+                var third: u8 = data->[index + 2] as u8;
+
+                if isUTF8ContinuationByte(second as char) && isUTF8ContinuationByte(third as char) {
+                    codePoint = (((first & 0x0F) as UnicodeCodePoint) << 12)
+                        | (((second & 0x3F) as UnicodeCodePoint) << 6)
+                        | ((third & 0x3F) as UnicodeCodePoint);
+
+                    if codePoint >= 0x800 && !(codePoint >= 0xD800 && codePoint <= 0xDFFF) {
+                        nextIndex = index + 3;
+                    }
+                }
+            }
+        } else if (first & 0xF8) == 0xF0 {
+            if index + 3 < length {
+                var second: u8 = data->[index + 1] as u8;
+                var third: u8 = data->[index + 2] as u8;
+                var fourth: u8 = data->[index + 3] as u8;
+
+                if isUTF8ContinuationByte(second as char)
+                    && isUTF8ContinuationByte(third as char)
+                    && isUTF8ContinuationByte(fourth as char)
+                {
+                    codePoint = (((first & 0x07) as UnicodeCodePoint) << 18)
+                        | (((second & 0x3F) as UnicodeCodePoint) << 12)
+                        | (((third & 0x3F) as UnicodeCodePoint) << 6)
+                        | ((fourth & 0x3F) as UnicodeCodePoint);
+
+                    if codePoint >= 0x10000 && codePoint <= 0x10FFFF {
+                        nextIndex = index + 4;
+                    }
+                }
+            }
+        }
+    }
+
+    if nextIndex != index {
+        outCodePoint[0] = codePoint;
+    }
+
+    return nextIndex;
+}
+
+fn appendUTF8Encoded(text: ptr[TString], codePoint: UnicodeCodePoint) bool {
+    if codePoint > 0x10FFFF {
+        return false;
+    }
+
+    if codePoint >= 0xD800 && codePoint <= 0xDFFF {
+        return false;
+    }
+
+    removeNullTerminator(text);
+
+    if codePoint <= 0x7F {
+        appendByteUnchecked(text, codePoint as char);
+    } else if codePoint <= 0x7FF {
+        appendByteUnchecked(text, (0xC0 | ((codePoint >> 6) & 0x1F)) as char);
+        appendByteUnchecked(text, (0x80 | (codePoint & 0x3F)) as char);
+    } else if codePoint <= 0xFFFF {
+        appendByteUnchecked(text, (0xE0 | ((codePoint >> 12) & 0x0F)) as char);
+        appendByteUnchecked(text, (0x80 | ((codePoint >> 6) & 0x3F)) as char);
+        appendByteUnchecked(text, (0x80 | (codePoint & 0x3F)) as char);
+    } else {
+        appendByteUnchecked(text, (0xF0 | ((codePoint >> 18) & 0x07)) as char);
+        appendByteUnchecked(text, (0x80 | ((codePoint >> 12) & 0x3F)) as char);
+        appendByteUnchecked(text, (0x80 | ((codePoint >> 6) & 0x3F)) as char);
+        appendByteUnchecked(text, (0x80 | (codePoint & 0x3F)) as char);
+    }
+
+    pushNullTerminator(text);
+
+    return true;
+}

@@ -1,0 +1,164 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+import std::ffi::c::mem as c;
+
+const PROT_READ: s32 @public = c::c_PROT_READ;
+const PROT_WRITE: s32 @public = c::c_PROT_WRITE;
+const PROT_EXEC: s32 @public = c::c_PROT_EXEC;
+const PROT_NONE: s32 @public = c::c_PROT_NONE;
+const PROT_GROWSDOWN: s32 @public = c::c_PROT_GROWSDOWN;
+const PROT_GROWSUP: s32 @public = c::c_PROT_GROWSUP;
+
+const MAP_SHARED: s32 @public = c::c_MAP_SHARED;
+const MAP_PRIVATE: s32 @public = c::c_MAP_PRIVATE;
+const MAP_SHARED_VALIDATE: s32 @public = c::c_MAP_SHARED_VALIDATE;
+const MAP_TYPE: s32 @public = c::c_MAP_TYPE;
+const MAP_FIXED: s32 @public = c::c_MAP_FIXED;
+const MAP_ANONYMOUS: s32 @public = c::c_MAP_ANONYMOUS;
+const MAP_ANON: s32 @public = c::c_MAP_ANON;
+const MAP_GROWSDOWN: s32 @public = c::c_MAP_GROWSDOWN;
+const MAP_DENYWRITE: s32 @public = c::c_MAP_DENYWRITE;
+const MAP_EXECUTABLE: s32 @public = c::c_MAP_EXECUTABLE;
+const MAP_LOCKED: s32 @public = c::c_MAP_LOCKED;
+const MAP_NORESERVE: s32 @public = c::c_MAP_NORESERVE;
+const MAP_POPULATE: s32 @public = c::c_MAP_POPULATE;
+const MAP_NONBLOCK: s32 @public = c::c_MAP_NONBLOCK;
+const MAP_STACK: s32 @public = c::c_MAP_STACK;
+const MAP_HUGETLB: s32 @public = c::c_MAP_HUGETLB;
+const MAP_SYNC: s32 @public = c::c_MAP_SYNC;
+const MAP_FIXED_NOREPLACE: s32 @public = c::c_MAP_FIXED_NOREPLACE;
+
+const MS_ASYNC: s32 @public = c::c_MS_ASYNC;
+const MS_INVALIDATE: s32 @public = c::c_MS_INVALIDATE;
+const MS_SYNC: s32 @public = c::c_MS_SYNC;
+
+const MADV_NORMAL: s32 @public = c::c_MADV_NORMAL;
+const MADV_RANDOM: s32 @public = c::c_MADV_RANDOM;
+const MADV_SEQUENTIAL: s32 @public = c::c_MADV_SEQUENTIAL;
+const MADV_WILLNEED: s32 @public = c::c_MADV_WILLNEED;
+const MADV_DONTNEED: s32 @public = c::c_MADV_DONTNEED;
+const MADV_FREE: s32 @public = c::c_MADV_FREE;
+const MADV_REMOVE: s32 @public = c::c_MADV_REMOVE;
+const MADV_DONTFORK: s32 @public = c::c_MADV_DONTFORK;
+const MADV_DOFORK: s32 @public = c::c_MADV_DOFORK;
+const MADV_MERGEABLE: s32 @public = c::c_MADV_MERGEABLE;
+const MADV_UNMERGEABLE: s32 @public = c::c_MADV_UNMERGEABLE;
+const MADV_HUGEPAGE: s32 @public = c::c_MADV_HUGEPAGE;
+const MADV_NOHUGEPAGE: s32 @public = c::c_MADV_NOHUGEPAGE;
+const MADV_DONTDUMP: s32 @public = c::c_MADV_DONTDUMP;
+const MADV_DODUMP: s32 @public = c::c_MADV_DODUMP;
+const MADV_WIPEONFORK: s32 @public = c::c_MADV_WIPEONFORK;
+const MADV_KEEPONFORK: s32 @public = c::c_MADV_KEEPONFORK;
+const MADV_COLD: s32 @public = c::c_MADV_COLD;
+const MADV_PAGEOUT: s32 @public = c::c_MADV_PAGEOUT;
+const MADV_POPULATE_READ: s32 @public = c::c_MADV_POPULATE_READ;
+const MADV_POPULATE_WRITE: s32 @public = c::c_MADV_POPULATE_WRITE;
+const MADV_DONTNEED_LOCKED: s32 @public = c::c_MADV_DONTNEED_LOCKED;
+const MADV_HWPOISON: s32 @public = c::c_MADV_HWPOISON;
+
+const MCL_CURRENT: s32 @public = c::c_MCL_CURRENT;
+const MCL_FUTURE: s32 @public = c::c_MCL_FUTURE;
+const MCL_ONFAULT: s32 @public = c::c_MCL_ONFAULT;
+
+const M_MXFAST: s32 @public = c::c_M_MXFAST;
+const M_TRIM_THRESHOLD: s32 @public = c::c_M_TRIM_THRESHOLD;
+const M_TOP_PAD: s32 @public = c::c_M_TOP_PAD;
+const M_MMAP_THRESHOLD: s32 @public = c::c_M_MMAP_THRESHOLD;
+const M_MMAP_MAX: s32 @public = c::c_M_MMAP_MAX;
+const M_CHECK_ACTION: s32 @public = c::c_M_CHECK_ACTION;
+const M_PERTURB: s32 @public = c::c_M_PERTURB;
+const M_ARENA_TEST: s32 @public = c::c_M_ARENA_TEST;
+const M_ARENA_MAX: s32 @public = c::c_M_ARENA_MAX;
+
+fn allocateMemory(size: usize) ptr @public {
+    return c::malloc(size);
+}
+
+fn allocateZeroedMemory(count: usize, size: usize) ptr @public {
+    return c::calloc(count, size);
+}
+
+fn reallocateMemory(block: ptr, size: usize) ptr @public {
+    return c::realloc(block, size);
+}
+
+fn freeMemory(block: ptr) void @public {
+    c::free(block);
+}
+
+fn allocateAlignedMemory(alignment: usize, size: usize) ptr @public {
+    return c::alignedAlloc(alignment, size);
+}
+
+fn copyMemory(dest: ptr, src: ptr, size: usize) ptr @public {
+    return c::cMemcpy(dest, src, size);
+}
+
+fn moveMemory(dest: ptr, src: ptr, size: usize) ptr @public {
+    return c::cMemmove(dest, src, size);
+}
+
+fn setMemory(dest: ptr, value: s32, size: usize) ptr @public {
+    return c::cMemset(dest, value, size);
+}
+
+fn compareMemory(left: ptr, right: ptr, size: usize) s32 @public {
+    return c::cMemcmp(left, right, size);
+}
+
+fn findByteInMemory(buffer: ptr, value: s32, size: usize) ptr @public {
+    return c::cMemchr(buffer, value, size);
+}
+
+fn getUsableSize(block: ptr) usize @public {
+    return c::mallocUsableSize(block);
+}
+
+fn mapMemory(base_addr: ptr, length: usize, prot: s32, flags: s32, fd: s32, offset: s64) ptr @public {
+    return c::mmap(base_addr, length, prot, flags, fd, offset);
+}
+
+fn unmapMemory(base_addr: ptr, length: usize) s32 @public {
+    return c::munmap(base_addr, length);
+}
+
+fn protectMemory(base_addr: ptr, length: usize, prot: s32) s32 @public {
+    return c::mprotect(base_addr, length, prot);
+}
+
+fn adviseMemory(base_addr: ptr, length: usize, advice: s32) s32 @public {
+    return c::madvise(base_addr, length, advice);
+}
+
+fn syncMemory(base_addr: ptr, length: usize, flags: s32) s32 @public {
+    return c::msync(base_addr, length, flags);
+}
+
+fn lockMemory(base_addr: ptr, length: usize) s32 @public {
+    return c::mlock(base_addr, length);
+}
+
+fn unlockMemory(base_addr: ptr, length: usize) s32 @public {
+    return c::munlock(base_addr, length);
+}
+
+fn getPageSize() s32 @public {
+    return c::getpagesize();
+}

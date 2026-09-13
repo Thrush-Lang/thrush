@@ -5,7 +5,7 @@ Set-Location (Join-Path $PSScriptRoot "..")
 New-Item -ItemType Directory -Force -Path "changelogs" | Out-Null
 
 Write-Host "Available tags:"
-git tag --sort=-version:refname | Select-Object -First 20
+git tag --sort=-version:refname
 Write-Host ""
 
 $prev_tag = Read-Host "Enter previous tag"

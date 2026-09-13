@@ -7,7 +7,7 @@ mkdir -p changelogs
 
 echo "Available tags:"
 
-git tag --sort=-version:refname | head -20
+git tag --sort=-version:refname
 
 echo
 

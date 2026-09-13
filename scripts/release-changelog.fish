@@ -4,7 +4,7 @@ cd (dirname (status filename))/..
 mkdir -p changelogs
 
 echo "Available tags:"
-git tag --sort=-version:refname | head -20
+git tag --sort=-version:refname
 echo
 
 read -P "Enter previous tag: " prev_tag

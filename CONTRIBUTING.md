@@ -10,11 +10,7 @@ This guide is long on purpose. It covers where things live, how the code is writ
 
 ## How this project is run
 
-Thrust is written and reviewed by people who want to understand every line that goes in. The note at the bottom of `README.md` says it plainly:
-
-> Agentic AI: No, I don't use it and I never will. This compiler will always have code analyzed, processed, and studied by a human.
-
-In practice, that means: don't submit AI-generated code as if you wrote it, and don't expect an automated agent to review or merge your work. You are expected to understand the code you propose and to be able to talk about it if someone asks. Read the [Code of Conduct](CODE_OF_CONDUCT.md) before anything else.
+Thrust is written and reviewed by people who want to understand every line that goes in. You are expected to understand the code you propose and to be able to talk about it if someone asks. Read the [Code of Conduct](CODE_OF_CONDUCT.md) before anything else.
 
 ## Before you start
 
@@ -48,10 +44,10 @@ The short version, by crate:
 - `thrustc_llvm_*`, the backend: codegen, ABI (System V, NVIDIA CUDA), attributes, call conventions, target triples, linker driver.
 - `thrustc_backends`, `thrustc_heap_allocator`, `thrustc_abi`, `thrustc_utils`, `thrustc_errors`, `thrustc_diagnostician`, `thrustc_logging`, shared infrastructure.
 - `crates/llvm/`, vendored, patched bindings (`llvm-sys`, `inkwell`, `clang`, `clang-sys`). You almost never touch these.
-- `fuzz/`, the fuzzing suite. Separate cargo workspace, excluded from the main one (`Cargo.toml:54-56`).
+- `fuzz/`, the fuzzing suite. Separate cargo workspace, excluded from the main workspace in the root `Cargo.toml`.
 - `scripts/`, `.github/workflows/`, `changelogs/`, `showcase/`, `tests/`, `highlighting/`, tooling, CI, release artifacts, examples, and editor support.
 
-The `tests/` folder is git-ignored, so treat it as local scratch space. Keep your commits out of it.
+The `tests/` folder contains Thrust source inputs used for manual and integration-style checks. Keep changes there focused and intentional.
 
 ## Where to start
 
@@ -112,7 +108,7 @@ These conventions are not hard law, but the project is pretty consistent about t
 
 ### No external error crates
 
-The project does not use `thiserror` or `anyhow`, and there are no custom macros. Error handling is a single ADT and a dispatcher:
+The project does not use `thiserror` or `anyhow`. Error handling is centered around a single ADT and a dispatcher, with a small internal derive macro for diagnostic-code helpers:
 
 - `CompilationIssue` in `thrustc_errors/src/lib.rs:25-47` is the one error type. Variants carry data positionally: `Error(CompilationIssueCode, help, message, Option<note>, span)`.
 - Construct errors inline where they happen. See `thrustc_parser/src/lib.rs:303-309` and `thrustc_lexer/src/lex.rs:57-63`.
@@ -143,7 +139,7 @@ If you add an AST variant, you also need to:
 
 ### Lints
 
-The lint policy is deliberately permissive, configured once in `.cargo/config.toml:4-10,48-52`. `dead_code` and `missing_abi` are allowed, and the clippy `style`, `complexity`, and `pedantic` groups are allowed. Individual files opt out of specific lints with an inner attribute right after the license header, e.g. `#![allow(clippy::result_unit_err)]` (`thrustc_lexer/src/lib.rs:20`).
+The lint policy is deliberately permissive, configured once in `.cargo/config.toml`. `dead_code` and `missing_abi` are allowed, and the clippy `style`, `complexity`, and `pedantic` groups are allowed. Individual files opt out of specific lints with an inner attribute right after the license header, e.g. `#![allow(clippy::result_unit_err)]` (`thrustc_lexer/src/lib.rs:20`).
 
 Please don't widen those global allowances. If you hit a lint, silence it locally in your file with a justification, or fix the code. Same for adding a `rustfmt.toml` or a per-crate `[lints]` section: ask before you add one.
 
@@ -151,8 +147,8 @@ Please don't widen those global allowances. If you hit a lint, silence it locall
 
 Say you want a new error. The concrete steps:
 
-1. **Define the code.** Add a variant to `CompilationIssueCode` in `thrustc_errors/src/lib.rs:118-176`. Codes are `E0001`..`E0040` for errors and `W0001`..`W0018` for warnings, each with a trailing `// comment` saying what it means.
-2. **Give it a title.** The `to_title()` method (`thrustc_errors/src/lib.rs:179-328`) maps the code to the colored string printed in the header.
+1. **Define the code.** Add a variant to `CompilationIssueCode` in `thrustc_errors/src/lib.rs`. Existing codes currently extend through `E0055` for errors and `W0032` for warnings.
+2. **Give it a title.** The `to_title()` method maps the code to the colored string printed in the header.
 3. **Emit it.** Build a `CompilationIssue::Error(code, help, message, None, span)` at the failure site (parser, semantic, wherever), and route it to `dispatch_diagnostic` following the pattern in `thrustc_parser/src/lib.rs:160-178` (`verify`).
 4. **Document it.** Add an example to `COMPILER_DIAGNOSTICS.md`. Screenshots of terminal output live in `assets/examples/diagnostics/`.
 
@@ -160,12 +156,12 @@ Warnings work the same way with `CompilationIssue::Warning(code, message, span)`
 
 ## Verifying your change
 
-Here's the honest part: the project does not have a test suite in the usual sense. There is exactly one `#[test]` in the whole workspace (`thrustc_llvm_linker_driver/src/lib.rs:464`). CI builds the compiler on four platforms and cuts releases; it does not run tests, clippy, or fmt. So the testing burden sits on you and on the fuzzers.
+Here's the honest part: the project relies heavily on manual validation and fuzzing, even though there are some Rust unit/integration tests in the workspace. The testing burden still sits on you and on the fuzzers.
 
 What to do before opening a PR:
 
 - `cargo build --release` and fix every warning you introduced.
-- Compile and run at least one real program end to end. `showcase/` has examples; `tests/` has scratch files if you want a quick loop.
+- Compile and run at least one real program end to end. `showcase/` has examples; `tests/` has test inputs if you want a quick loop.
 - If you touched the frontend, run the fuzzers that cover it. `cargo fuzz-lexer`, `cargo fuzz-pipeline-stable` for a bounded sanity check, and the continuous supervisor if you have time: `cargo fuzz-continuous-<target>-<mode>` with a `--max-time`. The fuzz docs (`COMPILER_FUZZING.md`, `fuzz/COMPILER_CONTINUOUS_FUZZING.md`) explain the workflow.
 - If you fixed a bug the fuzzer found, reproduce the old artifact first (`cargo fuzz-reproduce-case <target> <input.bin>`) to confirm it crashed before, then confirm it no longer crashes after, and finish by marking the issue `fixed` in the backlog.
 
@@ -183,6 +179,9 @@ Commit titles follow `COMMIT_CONVENTIONS.md`. The shape is `feat(scope)` or `fix
 - `project`, Cargo, Rust toolchain, GitHub Actions, new crates.
 - `project-visual`, general and visual project changes (README, assets, editor highlighting, banners).
 - `doc`, the compiler documentation and guides (CONTRIBUTING, the `COMPILER_*.md` files).
+- `abi`, ABI representation, lowering, calling conventions, or target ABI handling.
+- `preprocessador`, preprocessor and module/import resolution.
+- `std`, the standard library.
 
 Title first, then a short, specific description. "feat(frontend) Adding support for X" reads better than "Update parser".
 

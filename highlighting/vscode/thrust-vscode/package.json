@@ -2,7 +2,7 @@
   "name": "thrustlang-highlighting",
   "displayName": "Thrust Programming Language",
   "description": "Syntax highlighting, theme, and file icons for the Thrust Programming Language",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "publisher": "thrustlang",
   "repository": "https://github.com/thrustlang/thrustc",
   "engines": {
@@ -34,6 +34,11 @@
         "label": "One Dark Pro (Thrust)",
         "uiTheme": "vs-dark",
         "path": "./themes/one-dark-pro.json"
+      },
+      {
+        "label": "Gruvbox Dark Hard (Thrust)",
+        "uiTheme": "vs-dark",
+        "path": "./themes/gruvbox-dark-hard.json"
       }
     ],
     "iconThemes": [

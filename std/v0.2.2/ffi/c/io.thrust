@@ -1,0 +1,82 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+static mut stdin: ptr  @public @extern("stdin");
+static mut stdout: ptr @public @extern("stdout");
+static mut stderr: ptr @public @extern("stderr");
+
+fn vprintf(fmt: CString, ap: ptr)                              s32   @public @extern("vprintf")   @convention("C");
+fn vfprintf(stream: ptr, fmt: CString, ap: ptr)                s32   @public @extern("vfprintf")  @convention("C");
+fn vsprintf(buffer: ptr, fmt: CString, ap: ptr)                s32   @public @extern("vsprintf")  @convention("C");
+fn vsnprintf(buffer: ptr, size: usize, fmt: CString, ap: ptr)  s32   @public @extern("vsnprintf") @convention("C");
+fn vscanf(fmt: CString, ap: ptr)                               s32   @public @extern("vscanf")    @convention("C");
+fn vfscanf(stream: ptr, fmt: CString, ap: ptr)                 s32   @public @extern("vfscanf")   @convention("C");
+fn vsscanf(text: CString, fmt: CString, ap: ptr)               s32   @public @extern("vsscanf")   @convention("C");
+
+fn fopen(filename: CString, mode: CString)                     ptr   @public @extern("fopen")     @convention("C");
+fn freopen(filename: CString, mode: CString, stream: ptr)      ptr   @public @extern("freopen")   @convention("C");
+fn fclose(stream: ptr)                                         s32   @public @extern("fclose")    @convention("C");
+fn fflush(stream: ptr)                                         s32   @public @extern("fflush")    @convention("C");
+fn fread(buffer: ptr, size: usize, count: usize, stream: ptr)  usize @public @extern("fread")     @convention("C");
+fn fwrite(buffer: ptr, size: usize, count: usize, stream: ptr) usize @public @extern("fwrite")    @convention("C");
+fn fseek(stream: ptr, offset: s64, whence: s32)                s32   @public @extern("fseek")     @convention("C");
+fn ftell(stream: ptr)                                          s64   @public @extern("ftell")     @convention("C");
+fn rewind(stream: ptr)                                         void  @public @extern("rewind")    @convention("C");
+fn fgetpos(stream: ptr, position: ptr)                         s32   @public @extern("fgetpos")   @convention("C");
+fn fsetpos(stream: ptr, position: ptr)                         s32   @public @extern("fsetpos")   @convention("C");
+fn feof(stream: ptr)                                           s32   @public @extern("feof")      @convention("C");
+fn ferror(stream: ptr)                                         s32   @public @extern("ferror")    @convention("C");
+fn clearerr(stream: ptr)                                       void  @public @extern("clearerr")  @convention("C");
+fn fileno(stream: ptr)                                         s32   @public @extern("fileno")    @convention("C");
+fn fdopen(fd: s32, mode: CString)                              ptr   @public @extern("fdopen")    @convention("C");
+
+fn fgetc(stream: ptr)                                          s32   @public @extern("fgetc")     @convention("C");
+fn getc(stream: ptr)                                           s32   @public @extern("getc")      @convention("C");
+fn getchar()                                                   s32   @public @extern("getchar")   @convention("C");
+fn fputc(character: s32, stream: ptr)                          s32   @public @extern("fputc")     @convention("C");
+fn putc(character: s32, stream: ptr)                           s32   @public @extern("putc")      @convention("C");
+fn putchar(character: s32)                                     s32   @public @extern("putchar")   @convention("C");
+fn ungetc(character: s32, stream: ptr)                         s32   @public @extern("ungetc")    @convention("C");
+
+fn fgets(buffer: ptr, size: s32, stream: ptr)                  ptr   @public @extern("fgets")     @convention("C");
+fn fputs(text: CString, stream: ptr)                           s32   @public @extern("fputs")     @convention("C");
+fn puts(text: CString)                                         s32   @public @extern("puts")      @convention("C");
+fn perror(text: CString)                                       void  @public @extern("perror")    @convention("C");
+
+fn remove(filename: CString)                                   s32   @public @extern("remove")    @convention("C");
+fn rename(old: CString, newName: CString)                      s32   @public @extern("rename")    @convention("C");
+fn setvbuf(stream: ptr, buffer: ptr, mode: s32, size: usize)   s32   @public @extern("setvbuf")   @convention("C");
+fn setbuf(stream: ptr, buffer: ptr)                            void  @public @extern("setbuf")    @convention("C");
+
+fn tmpfile()                                                   ptr   @public @extern("tmpfile")   @convention("C");
+fn fseeko(stream: ptr, offset: s64, whence: s32)               s32   @public @extern("fseeko")    @convention("C");
+fn ftello(stream: ptr)                                         s64   @public @extern("ftello")    @convention("C");
+fn getline(lineptr: ptr, n: ptr[usize], stream: ptr)           s64   @public @extern("getline")   @convention("C");
+fn getdelim(lineptr: ptr, n: ptr[usize], delim: s32, stream: ptr) s64 @public @extern("getdelim") @convention("C");
+fn popen(command: CString, mode: CString)                      ptr   @public @extern("popen")     @convention("C");
+fn pclose(stream: ptr)                                         s32   @public @extern("pclose")    @convention("C");
+fn vdprintf(fd: s32, fmt: CString, ap: ptr)                    s32   @public @extern("vdprintf")  @convention("C");
+fn flockfile(stream: ptr)                                      void  @public @extern("flockfile") @convention("C");
+fn ftrylockfile(stream: ptr)                                   s32   @public @extern("ftrylockfile") @convention("C");
+fn funlockfile(stream: ptr)                                    void  @public @extern("funlockfile") @convention("C");
+fn renameat(old_dir_fd: s32, old_path: CString, new_dir_fd: s32, new_path: CString) s32 @public @extern("renameat") @convention("C");
+fn renameat2(old_dir_fd: s32, old_path: CString, new_dir_fd: s32, new_path: CString, flags: u32) s32 @public @extern("renameat2") @convention("C");
+fn fcloseall()                                                 s32   @public @extern("fcloseall") @convention("C");
+fn setbuffer(stream: ptr, buffer: ptr, size: usize)            void  @public @extern("setbuffer") @convention("C");
+fn setlinebuf(stream: ptr)                                     void  @public @extern("setlinebuf") @convention("C");

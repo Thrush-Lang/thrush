@@ -6,132 +6,110 @@ if exists("b:current_syntax")
   finish
 endif
 
-" ─── Comments ────────────────────────────────────────────────────────────────
 syntax region thrustBlockComment start="/\*" end="\*/" contains=thrustTodo
-syntax match  thrustLineComment  "//.*$"     contains=thrustTodo
+syntax match  thrustLineComment  "//.*$" contains=thrustTodo
 syntax keyword thrustTodo TODO FIXME HACK NOTE XXX contained
 
-" ─── Strings & Characters ────────────────────────────────────────────────────
-syntax region thrustString start='"' skip='\\"' end='"'
-syntax match  thrustChar   "'\\.'"
-syntax match  thrustChar   "'[^\\]'"
+syntax match  thrustEscape "\\[ntr0\\\"']" contained
+syntax region thrustCNString start='n#"' skip='\\"' end='"' contains=thrustEscape
+syntax region thrustString   start='"'   skip='\\"' end='"' contains=thrustEscape
+syntax match  thrustChar     "'\([^'\\]\|\\[ntr0\\\"']\)'"
 
-" ─── Numbers ─────────────────────────────────────────────────────────────────
-syntax match thrustFloat   "\<[0-9]\+\.[0-9]*\>"
-syntax match thrustInt     "\<[0-9]\+\>"
-syntax match thrustHex     "\<0x[0-9a-fA-F]\+\>"
+syntax match thrustFloat  "\<[0-9][0-9_]*\.[0-9][0-9_]*\>"
+syntax match thrustHex    "\<0x[0-9a-fA-F][0-9a-fA-F_]*\>"
+syntax match thrustBinary "\<0b[01][01_]*\>"
+syntax match thrustOctal  "\<0o[0-7][0-7_]*\>"
+syntax match thrustInt    "\<[0-9][0-9_]*\>"
 
-" ─── Keywords ────────────────────────────────────────────────────────────────
 syntax keyword thrustKeyword
     \ var fn if elif else for while loop
     \ return break continue breakall continueall
     \ defer pass as const struct type enum
     \ alloc address addr load write
     \ ref mut static unreachable intrinsic
-    \ embedded import importC new
+    \ embedded import importC only new directive
     \ asm asmfn global_asm fixed
 
-" ─── Literals ────────────────────────────────────────────────────────────────
 syntax keyword thrustBoolean true false
 syntax keyword thrustNull    nullptr
+syntax keyword thrustMemory  deref
 
-" ─── Memory / pointer keywords ───────────────────────────────────────────────
-syntax keyword thrustMemory deref
-
-" ─── Builtin functions ───────────────────────────────────────────────────────
 syntax keyword thrustBuiltin
-    \ halloc sizeOf memset memmove memcpy
-    \ alignOf abiSizeOf bitSizeOf abiAlignOf
+    \ halloc memset memmove memcpy
+    \ abiSizeOf bitSizeOf abiAlignOf
+    \ arbitraryArg arbitraryArgs
+    \ alignOf sizeOf staticAssert compileError compileWarning
+    \ file fileLine currentFuncName
+    \ isSigned isUnsigned isInteger isFloat isBool isChar
+    \ isPointer isArray isFixedArray isStruct isVoid isConst
+    \ isNumeric isFunction typeWidth fieldCount fixedArraySize
+    \ isSameType isPtrLike isFixedArrayOfSize
+    \ compilerVersion debugBuild stringLength
+    \ targetOS targetArch targetVendor targetAbi targetTriple
+    \ isLinux isWindows isDarwin isApple isAix
+    \ is64Bit is32Bit isBigEndian isLittleEndian
+    \ isX86 isX8664 isArm isAarch64 isRiscv64
+    \ isPpc isPpc64 isMips64 isSystemz isLoongarch64
+    \ isWasm isElf isMachO isCoff hasPosixThreads hasSysvAbi
+    \ pointerWidth isizeWidth usizeWidth pointerAlign maxAlignment
+    \ targetCPU targetCpuFeatures hasFeature
+    \ hostOsName hostArch hostEndian currentTimestamp
 
-" ─── Types ───────────────────────────────────────────────────────────────────
 syntax keyword thrustType
     \ s8 s16 s32 s64 ssize
     \ u8 u16 u32 u64 u128 usize
     \ f32 f64 f128 f80 fppc_128
-    \ bool char ptr array void Fn
+    \ bool char ptr array void Fn CString CNString
 
-" ─── Type qualifier ──────────────────────────────────────────────────────────
 syntax keyword thrustTypeQual const
 
-" ─── Atomic / threading ──────────────────────────────────────────────────────
 syntax keyword thrustAtomic
     \ volatile lazyThread
     \ atomicNone atomicFree atomicRelax atomicGrab
     \ atomicDrop atomicSync atomicStrict
     \ threadInit threadDyn threadExec threadLDyn
 
-" ─── Attributes  (@something) ────────────────────────────────────────────────
 syntax match thrustAttribute
-    \ "@\(asmAlignStack\|asmSyntax\|asmThrowErrors\|asmSideEffects\)"
-syntax match thrustAttribute
-    \ "@\(align\|optFuzzing\|noUnwind\|packed\|heap\|public\|linkage\)"
-syntax match thrustAttribute
-    \ "@\(extern\|arbitraryArgs\|hot\|minSize\|alwaysInline\|noInline\|inline\)"
-syntax match thrustAttribute
-    \ "@\(safeStack\|weakStack\|strongStack\|preciseFloatingPoint\)"
-syntax match thrustAttribute
-    \ "@\(convention\|pure\|thunk\|cuda\|constructor\|destructor\)"
+    \ "@\(align\|optFuzzing\|noUnwind\|noReturn\|packed\|heap\|public\|entrypoint\|linkage\|extern\|arbitraryArgs\|hot\|minSize\|alwaysInline\|noInline\|inline\|safeStack\|weakStack\|strongStack\|preciseFloatingPoint\|convention\|pure\|thunk\|cuda\|constructor\|destructor\|if\|elif\|else\|promote\|asmAlignStack\|asmSyntax\|asmThrowErrors\|asmSideEffects\)\>"
 
-" ─── Operators ───────────────────────────────────────────────────────────────
+syntax match thrustOperator "\.\.\.\|\.\."
+syntax match thrustOperator "->\|=>"
+syntax match thrustOperator "+=\|-=\|*=\|/=\|%=\|<<=\|>>=\|&=\||=\|^="
+syntax match thrustOperator "&&\|||"
+syntax match thrustOperator "==\|!=\|<=\|>=\|<\|>"
+syntax match thrustOperator "++\|--"
 syntax match thrustOperator "[-+*/=<>!&|^%~]"
-syntax match thrustOperator "\(==\|!=\|<=\|>=\|&&\|||/\|<<\|>>\)"
-syntax match thrustOperator "\(++\|--\)"
 
-" ─── Function definitions and calls ──────────────────────────────────────────
-syntax match thrustFuncDef  "\<fn\s\+\zs\w\+"
-syntax match thrustFuncCall "\<\w\+\ze\s*("
+syntax match thrustFuncDef    "\<\(fn\|asmfn\)\s\+\zs\w\+"
+syntax match thrustFuncCall   "\<\w\+\ze\s*("
+syntax match thrustStructName "\<\(struct\|enum\|type\)\s\+\zs\w\+"
+syntax match thrustPunct      "[(){}\[\].,;:]"
 
-" ─── Struct names ─────────────────────────────────────────────────────────────
-syntax match thrustStructName "\<struct\s\+\zs\w\+"
-
-" ─── Punctuation ──────────────────────────────────────────────────────────────
-syntax match thrustPunct "[(){}\[\].,;:]"
-
-" ─── One Dark colors ────────────────────────────────────────────────────────
-"
-"   bg         #282c34    fg          #abb2bf
-"   purple     #c678dd    cyan        #56b6c2
-"   blue       #61afef    green       #98c379
-"   red        #e06c75    yellow      #e5c07b
-"   orange     #d19a66    comment     #5c6370
-"   dark_red   #be5046
-
-function! s:hi(group, fg, ...) abort
-    let l:bg  = get(a:, 1, 'NONE')
-    let l:gui = get(a:, 2, 'NONE')
-    exe 'highlight ' . a:group .
-        \ ' guifg=' . a:fg .
-        \ ' guibg=' . l:bg .
-        \ ' gui='   . l:gui .
-        \ ' ctermfg=NONE ctermbg=NONE cterm=NONE'
-endfunction
-
-call s:hi('thrustBlockComment', '#5c6370', 'NONE', 'italic')
-call s:hi('thrustLineComment',  '#5c6370', 'NONE', 'italic')
-call s:hi('thrustTodo',         '#e5c07b', 'NONE', 'bold')
-
-call s:hi('thrustString',       '#98c379')
-call s:hi('thrustChar',         '#98c379')
-call s:hi('thrustFloat',        '#d19a66')
-call s:hi('thrustInt',          '#d19a66')
-call s:hi('thrustHex',          '#d19a66')
-
-call s:hi('thrustKeyword',      '#c678dd')
-call s:hi('thrustBoolean',      '#d19a66')
-call s:hi('thrustNull',         '#d19a66')
-call s:hi('thrustMemory',       '#c678dd')
-
-call s:hi('thrustBuiltin',      '#56b6c2')
-call s:hi('thrustType',         '#e5c07b')
-call s:hi('thrustTypeQual',     '#e5c07b')
-call s:hi('thrustAtomic',       '#56b6c2')
-
-call s:hi('thrustAttribute',    '#e06c75')
-
-call s:hi('thrustOperator',     '#56b6c2')
-call s:hi('thrustFuncDef',      '#61afef')
-call s:hi('thrustFuncCall',     '#61afef')
-call s:hi('thrustStructName',   '#e5c07b')
-call s:hi('thrustPunct',        '#abb2bf')
+highlight default link thrustBlockComment Comment
+highlight default link thrustLineComment  Comment
+highlight default link thrustTodo         Todo
+highlight default link thrustEscape       SpecialChar
+highlight default link thrustCNString     String
+highlight default link thrustString       String
+highlight default link thrustChar         Character
+highlight default link thrustFloat        Float
+highlight default link thrustHex          Number
+highlight default link thrustBinary       Number
+highlight default link thrustOctal        Number
+highlight default link thrustInt          Number
+highlight default link thrustKeyword      Keyword
+highlight default link thrustBoolean      Boolean
+highlight default link thrustNull         Constant
+highlight default link thrustMemory       Keyword
+highlight default link thrustBuiltin      Function
+highlight default link thrustType         Type
+highlight default link thrustTypeQual     Type
+highlight default link thrustAtomic       StorageClass
+highlight default link thrustAttribute    PreProc
+highlight default link thrustOperator     Operator
+highlight default link thrustFuncDef      Function
+highlight default link thrustFuncCall     Function
+highlight default link thrustStructName   Type
+highlight default link thrustPunct        Delimiter
 
 let b:current_syntax = "thrust"

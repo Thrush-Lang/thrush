@@ -5,7 +5,7 @@ cd /d "%~dp0\.."
 if not exist changelogs mkdir changelogs
 
 echo Available tags:
-git tag --sort=-version:refname | head -20
+git tag --sort=-version:refname
 echo.
 
 set /p prev_tag="Enter previous tag: "

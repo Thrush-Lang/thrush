@@ -32,7 +32,7 @@ bash scripts/cargo-dependencies.sh
 
 There are also `.ps1`, `.fish` and `.bat` versions of that script.
 
-The code documentation step also relies on the `cargo docs` alias defined in `.cargo/config.toml`, which builds the rustdoc documentation for the whole workspace.
+The code documentation step also relies on the `cargo docs` alias defined in `.cargo/config.toml`, which builds rustdoc documentation for thrustc workspace crates while excluding the vendored LLVM crates.
 
 ## The release pipeline
 
@@ -90,7 +90,7 @@ This step creates the changelog for the new version and tags it. It needs `git-c
 What it does:
 
 1. Creates the `changelogs/` directory if it does not exist.
-2. Shows the 20 most recent tags sorted by version, to help you pick the previous one.
+2. Shows the available tags sorted by version, to help you pick the previous one.
 3. Asks you for the **previous tag** (the one the changelog starts from) and validates that it exists.
 4. Asks you for the **new tag name** (the version being released).
 5. Runs `git-cliff <previous-tag>..HEAD`, generating `changelogs/<new-tag>/README.md` with all the commits in between.

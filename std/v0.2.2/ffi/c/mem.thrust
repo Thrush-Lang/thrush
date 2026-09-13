@@ -1,0 +1,127 @@
+/*
+
+    Copyright (C) 2026  Thrust Programming Language
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+*/
+
+const c_PROT_READ: s32 @public = 0x1;
+const c_PROT_WRITE: s32 @public = 0x2;
+const c_PROT_EXEC: s32 @public = 0x4;
+const c_PROT_NONE: s32 @public = 0x0;
+const c_PROT_GROWSDOWN: s32 @public = 0x01000000;
+const c_PROT_GROWSUP: s32 @public = 0x02000000;
+
+const c_MAP_SHARED: s32 @public = 0x01;
+const c_MAP_PRIVATE: s32 @public = 0x02;
+const c_MAP_SHARED_VALIDATE: s32 @public = 0x03;
+const c_MAP_TYPE: s32 @public = 0x0f;
+const c_MAP_FIXED: s32 @public = 0x10;
+const c_MAP_ANONYMOUS: s32 @public = 0x20;
+const c_MAP_ANON: s32 @public = 0x20;
+const c_MAP_GROWSDOWN: s32 @public = 0x00100;
+const c_MAP_DENYWRITE: s32 @public = 0x00800;
+const c_MAP_EXECUTABLE: s32 @public = 0x01000;
+const c_MAP_LOCKED: s32 @public = 0x02000;
+const c_MAP_NORESERVE: s32 @public = 0x04000;
+const c_MAP_POPULATE: s32 @public = 0x08000;
+const c_MAP_NONBLOCK: s32 @public = 0x10000;
+const c_MAP_STACK: s32 @public = 0x20000;
+const c_MAP_HUGETLB: s32 @public = 0x40000;
+const c_MAP_SYNC: s32 @public = 0x80000;
+const c_MAP_FIXED_NOREPLACE: s32 @public = 0x100000;
+
+const c_MS_ASYNC: s32 @public = 1;
+const c_MS_INVALIDATE: s32 @public = 2;
+const c_MS_SYNC: s32 @public = 4;
+
+const c_MADV_NORMAL: s32 @public = 0;
+const c_MADV_RANDOM: s32 @public = 1;
+const c_MADV_SEQUENTIAL: s32 @public = 2;
+const c_MADV_WILLNEED: s32 @public = 3;
+const c_MADV_DONTNEED: s32 @public = 4;
+const c_MADV_FREE: s32 @public = 8;
+const c_MADV_REMOVE: s32 @public = 9;
+const c_MADV_DONTFORK: s32 @public = 10;
+const c_MADV_DOFORK: s32 @public = 11;
+const c_MADV_MERGEABLE: s32 @public = 12;
+const c_MADV_UNMERGEABLE: s32 @public = 13;
+const c_MADV_HUGEPAGE: s32 @public = 14;
+const c_MADV_NOHUGEPAGE: s32 @public = 15;
+const c_MADV_DONTDUMP: s32 @public = 16;
+const c_MADV_DODUMP: s32 @public = 17;
+const c_MADV_WIPEONFORK: s32 @public = 18;
+const c_MADV_KEEPONFORK: s32 @public = 19;
+const c_MADV_COLD: s32 @public = 20;
+const c_MADV_PAGEOUT: s32 @public = 21;
+const c_MADV_POPULATE_READ: s32 @public = 22;
+const c_MADV_POPULATE_WRITE: s32 @public = 23;
+const c_MADV_DONTNEED_LOCKED: s32 @public = 24;
+const c_MADV_HWPOISON: s32 @public = 100;
+
+const c_MCL_CURRENT: s32 @public = 1;
+const c_MCL_FUTURE: s32 @public = 2;
+const c_MCL_ONFAULT: s32 @public = 4;
+
+const c_M_MXFAST: s32 @public = 1;
+const c_M_TRIM_THRESHOLD: s32 @public = -1;
+const c_M_TOP_PAD: s32 @public = -2;
+const c_M_MMAP_THRESHOLD: s32 @public = -3;
+const c_M_MMAP_MAX: s32 @public = -4;
+const c_M_CHECK_ACTION: s32 @public = -5;
+const c_M_PERTURB: s32 @public = -6;
+const c_M_ARENA_TEST: s32 @public = -7;
+const c_M_ARENA_MAX: s32 @public = -8;
+
+fn malloc(size: usize)                       ptr  @public @extern("malloc")   @convention("C");
+fn calloc(count: usize, size: usize)         ptr  @public @extern("calloc")   @convention("C");
+fn realloc(block: ptr, size: usize)          ptr  @public @extern("realloc")  @convention("C");
+fn free(block: ptr)                          void @public @extern("free")     @convention("C");
+fn alignedAlloc(alignment: usize, size: usize) ptr @public @extern("aligned_alloc") @convention("C");
+fn posixMemalign(result: ptr[ptr], alignment: usize, size: usize) s32 @public @extern("posix_memalign") @convention("C");
+fn valloc(size: usize)                       ptr  @public @extern("valloc")   @convention("C");
+fn memalign(alignment: usize, size: usize)   ptr  @public @extern("memalign") @convention("C");
+fn reallocarray(block: ptr, count: usize, size: usize) ptr @public @extern("reallocarray") @convention("C");
+fn mallocUsableSize(block: ptr)            usize @public @extern("malloc_usable_size") @convention("C");
+fn mallopt(parameter: s32, value: s32)       s32   @public @extern("mallopt")  @convention("C");
+
+fn mmap(base_addr: ptr, length: usize, prot: s32, flags: s32, fd: s32, offset: s64) ptr @public @extern("mmap") @convention("C");
+fn munmap(base_addr: ptr, length: usize)    s32  @public @extern("munmap") @convention("C");
+fn mprotect(base_addr: ptr, length: usize, prot: s32) s32 @public @extern("mprotect") @convention("C");
+fn msync(base_addr: ptr, length: usize, flags: s32) s32 @public @extern("msync") @convention("C");
+fn madvise(base_addr: ptr, length: usize, advice: s32) s32 @public @extern("madvise") @convention("C");
+fn posixMadvise(base_addr: ptr, length: usize, advice: s32) s32 @public @extern("posix_madvise") @convention("C");
+fn mlock(base_addr: ptr, length: usize)     s32  @public @extern("mlock") @convention("C");
+fn munlock(base_addr: ptr, length: usize)   s32  @public @extern("munlock") @convention("C");
+fn mlockall(flags: s32)                      s32  @public @extern("mlockall") @convention("C");
+fn munlockall()                              s32  @public @extern("munlockall") @convention("C");
+fn mincore(base_addr: ptr, length: usize, vec: ptr[u8]) s32 @public @extern("mincore") @convention("C");
+fn mremap(old_addr: ptr, old_size: usize, new_size: usize, flags: s32) ptr @public @extern("mremap") @convention("C");
+fn brk(base_addr: ptr)                       s32  @public @extern("brk") @convention("C");
+fn sbrk(delta: ssize)                        ptr  @public @extern("sbrk") @convention("C");
+fn getpagesize()                             s32  @public @extern("getpagesize") @convention("C");
+fn sysconf(name: s32)                        s64  @public @extern("sysconf") @convention("C");
+
+fn cMemcpy(dest: ptr, src: ptr, size: usize)       ptr @public @extern("memcpy")  @convention("C");
+fn cMemmove(dest: ptr, src: ptr, size: usize)      ptr @public @extern("memmove") @convention("C");
+fn cMemccpy(dest: ptr, src: ptr, value: s32, size: usize) ptr @public @extern("memccpy") @convention("C");
+fn cMemset(dest: ptr, value: s32, size: usize)     ptr @public @extern("memset")  @convention("C");
+fn cMemsetExplicit(dest: ptr, value: s32, size: usize) ptr @public @extern("memset_explicit") @convention("C");
+fn cMemcmp(left: ptr, right: ptr, size: usize)     s32 @public @extern("memcmp")  @convention("C");
+fn cMemchr(buffer: ptr, value: s32, size: usize)   ptr @public @extern("memchr")  @convention("C");
+fn cMemrchr(buffer: ptr, value: s32, size: usize)  ptr @public @extern("memrchr") @convention("C");
+fn cMemmem(haystack: ptr, haystack_len: usize, needle: ptr, needle_len: usize) ptr @public @extern("memmem") @convention("C");
+fn cMempcpy(dest: ptr, src: ptr, size: usize)      ptr @public @extern("mempcpy") @convention("C");
+fn cMemfrob(buffer: ptr, size: usize)              ptr @public @extern("memfrob") @convention("C");
